@@ -16,6 +16,7 @@ from urllib.parse import unquote, urlparse
 
 import httpx
 
+from pipeline import satellite
 from pipeline.config import RAW_DIR, project_path
 
 MANIFEST_PATH = RAW_DIR / "manifest.json"
@@ -137,6 +138,10 @@ def download_all(
             print(f"[{key}]")
             previous = {f["path"]: f for f in manifest["sources"].get(key, {}).get("files", [])}
             record: dict[str, Any] = {"status": "ok", "files": [], "errors": []}
+            if spec["type"] == "stac_ndvi_composite":
+                ok &= _download_composite(client, key, spec, force, previous, record, optional)
+                manifest["sources"][key] = record
+                continue
             try:
                 remotes = resolve_files(client, config["ckan_api"], spec)
             except Exception as exc:  # noqa: BLE001 - reported in the manifest
@@ -168,3 +173,30 @@ def download_all(
             manifest["sources"][key] = record
     save_manifest(manifest)
     return ok
+
+
+def _download_composite(
+    client: httpx.Client,
+    key: str,
+    spec: dict[str, Any],
+    force: bool,
+    previous: dict[str, Any],
+    record: dict[str, Any],
+    optional: bool,
+) -> bool:
+    """Satellite composite (built from many scenes, cached as one file). Fills `record`."""
+    target = RAW_DIR / key / spec["filename"]
+    rel = str(target.relative_to(RAW_DIR))
+    if target.exists() and not force and rel in previous:
+        record["files"].append(previous[rel])
+        print(f"  skip  {rel} (exists)")
+        return True
+    try:
+        record["files"].append(satellite.download_ndvi_composite(client, spec, target))
+        print(f"  ok    {rel} ({target.stat().st_size / 1e6:.1f} MB)")
+        return True
+    except Exception as exc:  # noqa: BLE001 - reported in the manifest
+        record["errors"].append(f"{spec['stac_api']}: {exc}")
+        record["status"] = "failed"
+        print(f"  FAIL  {rel}: {exc}")
+        return optional

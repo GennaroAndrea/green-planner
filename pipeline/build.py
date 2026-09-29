@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 from pipeline import indicators as ind
-from pipeline import loaders
+from pipeline import loaders, satellite
 from pipeline.config import DATA_DIR, RAW_DIR
 from pipeline.grid import make_grid
 from pipeline.model import (
@@ -40,7 +40,7 @@ SCHEMA_VERSION = 1
 # Raw column behind each indicator score
 RAW_COLUMN = {
     "pollution": "pollution_ratio",
-    "green_deficit": "green_share",
+    "green_deficit": "veg_share",  # satellite vegetation share (Q49)
     "traffic": "traffic_index",
     "population": "density_km2",
 }
@@ -50,7 +50,7 @@ DISCLAIMERS = [
     "model_estimate",  # tree counts are model estimates
     "arpa_validation",  # ARPA data subject to validation/revision
     "no_causality",  # industrial facilities express proximity, never causality
-    "public_green_only",  # green areas = mapped public green, not all vegetation
+    "satellite_vegetation",  # green = Sentinel-2 summer vegetation (10 m), public and private
     "population_coverage",  # population data covers ~83% of residents; Torre a Mare excluded
 ]
 
@@ -63,6 +63,9 @@ class Inputs:
         self.boundary = loaders.load_boundary()
         self.zones = loaders.load_zones(config)
         self.green = loaders.load_green_areas()
+        ndvi = config["sources"]["sentinel2_ndvi"]
+        self.ndvi_path = RAW_DIR / "sentinel2_ndvi" / ndvi["filename"]
+        self.ndvi_period = ndvi["datetime"]
         self.artificial = loaders.load_artificial_surfaces(tuple(self.boundary.total_bounds))
         pop = loaders.load_population()
         self.people, self.population_stats = loaders.place_population(
@@ -96,13 +99,24 @@ def build_cells(
     grid = make_grid(inputs.boundary, size, mask_cfg["min_cell_area_share"])
     grid[["zone_id", "zone_covered"]] = ind.assign_zones(grid, inputs.zones)
 
+    # Public green mapped by the Comune: descriptive only since Q49
     grid["green_m2"] = ind.covered_area(grid, inputs.green)
     grid["green_share"] = grid["green_m2"] / grid["area_m2"]
+    # Satellite vegetation (Q49): the green indicator and the tree estimate
+    veg_m2, veg_valid, _ = satellite.vegetation_area(
+        grid, inputs.ndvi_path, config["vegetation"]["ndvi_threshold"]
+    )
+    grid["veg_m2"] = veg_m2.clip(upper=grid["area_m2"])  # pixel centres vs clipped cells
+    grid["veg_share"] = grid["veg_m2"] / grid["area_m2"]
+    grid["veg_valid_share"] = veg_valid
     grid["artificial_share"] = ind.covered_area(grid, inputs.artificial) / grid["area_m2"]
     grid[["residents", "vulnerable"]] = ind.sum_points(
         grid, inputs.people, ["residents", "vulnerable"]
     )
     grid["density_km2"] = grid["residents"] / (grid["area_m2"] / 1e6)
+    # Non-residential cells (Q50): their trees are reported apart from the zone totals
+    # (on the rounded count shown in the UI: residents spread by quartiere can be fractional)
+    grid["residential"] = grid["residents"].round(0) > 0
     grid["traffic_index"] = ind.gaussian_kernel_sum(
         grid,
         inputs.controllers,
@@ -145,7 +159,7 @@ def build_cells(
     trees_cfg = config["trees"]
     trees = tree_estimate(
         grid["area_m2"],
-        grid["green_m2"],
+        grid["veg_m2"],
         trees_cfg["target_green_share"],
         trees_cfg["plantable_fraction"],
         trees_cfg["crown_area_m2"],
@@ -198,20 +212,33 @@ def build_zones(
     for col in [f"score_{k}" for k in active] + ["pollution_ratio", "traffic_index"]:
         c[f"_w_{col}"] = c[col] * pw
         agg[f"_w_{col}"] = "sum"
-    for col in ("residents", "vulnerable", "area_m2", "green_m2", "trees_new",
-                "green_deficit_m2", "plantable_m2"):  # fmt: skip
+    for col in ("residents", "vulnerable", "area_m2", "green_m2", "veg_m2"):
         agg[col] = "sum"
     agg["cell_id"] = "count"
+    # Tree totals count residential cells only; non-residential trees are kept apart (Q50)
+    res = c["residential"].astype(bool)
+    for col in ("trees_new", "green_deficit_m2", "plantable_m2"):
+        c[f"_res_{col}"] = c[col].where(res, 0)
+        agg[f"_res_{col}"] = "sum"
+    c["trees_new_nonres"] = c["trees_new"].where(~res, 0)
+    c["cells_residential"] = res.astype(int)
+    agg["trees_new_nonres"] = "sum"
+    agg["cells_residential"] = "sum"
     g = c.groupby("zone_id").agg(agg)
+    g = g.rename(
+        columns={f"_res_{col}": col for col in ("trees_new", "green_deficit_m2", "plantable_m2")}
+    )
     for col in [f"score_{k}" for k in active] + ["pollution_ratio", "traffic_index"]:
         g[col] = g.pop(f"_w_{col}") / g["residents"]
     g = g.rename(columns={"cell_id": "cells_analysed", "area_m2": "analysed_area_m2"})
     g["green_share"] = g["green_m2"] / g["analysed_area_m2"]
+    g["veg_share"] = g["veg_m2"] / g["analysed_area_m2"]
     g["density_km2"] = g["residents"] / (g["analysed_area_m2"] / 1e6)
 
     zones = inputs.zones.merge(g, left_on="zone_id", right_index=True, how="left")
     zones["analysed"] = zones["covered"] & zones["cells_analysed"].fillna(0).gt(0)
     zones["cells_analysed"] = zones["cells_analysed"].fillna(0).astype(int)
+    zones["cells_residential"] = zones["cells_residential"].fillna(0).astype(int)
 
     weights = effective_weights(config["weights"], active)
     w = np.array([weights[k] for k in active])
@@ -249,7 +276,7 @@ def build_zones(
 # ---------------------------------------------------------------------------
 
 
-INT_COLUMNS = ("zone_id", "rank", "rank_p5", "rank_p95", "trees_new")
+INT_COLUMNS = ("zone_id", "rank", "rank_p5", "rank_p95", "trees_new", "trees_new_nonres")
 ROUND_0_COLUMNS = ("residents", "vulnerable")  # fractional after the rione spreading
 
 
@@ -314,6 +341,13 @@ def _sources_from_manifest() -> dict[str, Any]:
     return out
 
 
+def _manifest_scenes(key: str) -> list[str]:
+    """Acquisition dates of the scenes behind a satellite composite (from the manifest)."""
+    manifest = json.loads((RAW_DIR / "manifest.json").read_text(encoding="utf-8"))
+    files = manifest["sources"].get(key, {}).get("files", [])
+    return [d for f in files for d in f.get("dates", [])]
+
+
 def build(config: dict[str, Any]) -> dict[str, Any]:
     t0 = time.time()
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
@@ -341,6 +375,20 @@ def build(config: dict[str, Any]) -> dict[str, Any]:
     print("context layers")
     export_layers(inputs)
 
+    c250 = grids[config["zones"]["aggregate_from_cell_size_m"]]
+    a250 = c250[c250["analysed"]]
+    vegetation_info = {
+        "source": "Copernicus Sentinel-2 L2A (Microsoft Planetary Computer)",
+        "period": inputs.ndvi_period,
+        "scenes": _manifest_scenes("sentinel2_ndvi"),
+        "ndvi_threshold": config["vegetation"]["ndvi_threshold"],
+        "valid_pixel_share": round(
+            float(np.average(a250["veg_valid_share"], weights=a250["area_m2"])), 4
+        ),
+        "cells_without_vegetation": int((a250["veg_m2"] == 0).sum()),
+        "nonresidential_cells": int((~a250["residential"].astype(bool)).sum()),
+    }
+
     w = config["sensitivity"]
     center = np.array(list(effective_weights(config["weights"], active).values()))
     metadata = {
@@ -363,6 +411,7 @@ def build(config: dict[str, Any]) -> dict[str, Any]:
             "method": config["classes"]["method"],
         },  # fmt: skip
         "trees": config["trees"],
+        "vegetation": config["vegetation"],
         "urban_mask": config["urban_mask"],
         "normalisation": config["normalisation"],
         "grid": {
@@ -406,6 +455,7 @@ def build(config: dict[str, Any]) -> dict[str, Any]:
                 "idw_power": config["air"]["idw_power"],
             },
             "industry": inputs.industry_info,
+            "vegetation": vegetation_info,
         },
         "sources": _sources_from_manifest(),
         "disclaimers": DISCLAIMERS,

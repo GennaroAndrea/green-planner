@@ -33,7 +33,7 @@ ACTIVE = ["pollution", "green_deficit", "traffic", "population"]
 INACTIVE = ["industry"]
 RAW = {
     "pollution": "pollution_ratio",
-    "green_deficit": "green_share",
+    "green_deficit": "veg_share",
     "traffic": "traffic_index",
     "population": "density_km2",
 }
@@ -77,8 +77,9 @@ def _model_columns(df: pd.DataFrame, top_n: int) -> tuple[pd.DataFrame, list, di
     summary["one_at_a_time"] = one_at_a_time(scores, w, ACTIVE, 10, top_n)
     table.index = df.index[analysed]
     df = df.join(table)
-    for col in ("rank", "rank_p5", "rank_p95", "trees_new"):
-        df[col] = df[col].astype("Int64")
+    for col in ("rank", "rank_p5", "rank_p95", "trees_new", "trees_new_nonres"):
+        if col in df:
+            df[col] = df[col].astype("Int64")
     df["robust"] = df["robust"].astype("boolean")
     return df, edges, summary
 
@@ -100,9 +101,14 @@ def _cells(size: int, cols: int, rows: int, rng: np.random.Generator):
     df["area_m2"] = float(size * size)
     df["area_share"] = 1.0
     df["artificial_share"] = rng.uniform(0, 1, n)
-    df["green_share"] = np.where(rng.uniform(size=n) < 0.3, 0.0, rng.uniform(0, 0.4, n))
+    df["green_share"] = rng.uniform(0, 0.3, n)  # public green: descriptive only (Q49)
     df["green_m2"] = df["green_share"] * df["area_m2"]
-    df["residents"] = rng.integers(1, 3000, n).astype(float)
+    df["veg_share"] = np.where(rng.uniform(size=n) < 0.3, 0.0, rng.uniform(0, 0.4, n))
+    df.loc[zone_id == 5, "veg_share"] = 0.35  # zone 5: above the target, no deficit
+    df["veg_m2"] = df["veg_share"] * df["area_m2"]
+    df["residents"] = np.where(rng.uniform(size=n) < 0.2, 0.0, rng.integers(1, 3000, n))
+    df.loc[0, "residents"] = 500.0  # cell 250-0-0 is residential in every test
+    df["residential"] = df["residents"] > 0
     df["vulnerable"] = (df["residents"] * 0.3).round()
     df["density_km2"] = df["residents"] / (df["area_m2"] / 1e6)
     for k in ("pollution", "traffic"):
@@ -110,9 +116,9 @@ def _cells(size: int, cols: int, rows: int, rng: np.random.Generator):
     for k in ("pollution", "traffic", "population"):
         df[f"score_{k}"] = np.where(analysed, rng.uniform(0, 100, n), np.nan)
     df["score_green_deficit"] = np.where(
-        analysed, green_deficit_score(df["green_share"], GREEN_BOUNDS), np.nan
+        analysed, green_deficit_score(df["veg_share"], GREEN_BOUNDS), np.nan
     )
-    trees = tree_estimate(df["area_m2"], df["green_m2"], *TREES.values())
+    trees = tree_estimate(df["area_m2"], df["veg_m2"], *TREES.values())
     df[trees.columns] = trees.astype(float)
     df.loc[~analysed, trees.columns] = np.nan
     top_n = math.ceil(SENS["top_share_cells"] * analysed.sum())
@@ -139,14 +145,21 @@ def _zones(cells: pd.DataFrame):
         pw = z["residents"]
         for col in [f"score_{k}" for k in ACTIVE] + ["pollution_ratio", "traffic_index"]:
             row[col] = (z[col] * pw).sum() / pw.sum() if len(z) else np.nan
-        for col in ("residents", "vulnerable", "green_m2", "green_deficit_m2", "plantable_m2"):
+        for col in ("residents", "vulnerable", "green_m2", "veg_m2"):
             row[col] = z[col].sum() if len(z) else np.nan
-        row["trees_new"] = z["trees_new"].sum() if len(z) else pd.NA
+        # tree totals: residential cells only, non-residential apart (Q50)
+        r = z[z["residential"]]
+        for col in ("green_deficit_m2", "plantable_m2"):
+            row[col] = r[col].sum() if len(z) else np.nan
+        row["trees_new"] = r["trees_new"].sum() if len(z) else pd.NA
+        row["trees_new_nonres"] = z.loc[~z["residential"], "trees_new"].sum() if len(z) else pd.NA
         row["cells_analysed"] = len(z)
+        row["cells_residential"] = len(r)
         row["analysed_area_m2"] = z["area_m2"].sum() if len(z) else np.nan
         rows.append(row)
     df = pd.DataFrame(rows)
     df["green_share"] = df["green_m2"] / df["analysed_area_m2"]
+    df["veg_share"] = df["veg_m2"] / df["analysed_area_m2"]
     df["density_km2"] = df["residents"] / (df["analysed_area_m2"] / 1e6)
     n_analysed = int(df["analysed"].sum())
     df, edges, summary = _model_columns(df, SENS["top_n_zones"])
@@ -370,14 +383,32 @@ def test_detail_reports_the_green_target(client):
 
 def test_zone_detail_counts_the_cells_below_the_target(client, data_dir):
     cells = gpd.read_parquet(data_dir / "cells_250.parquet")
-    cells = cells[cells["analysed"]]
+    cells = cells[cells["analysed"] & cells["residential"]]  # residential cells only (Q50)
     for zone in (1, 2, 4):
-        expected = int((cells.loc[cells["zone_id"] == zone, "green_share"] < 0.15).sum())
+        expected = int((cells.loc[cells["zone_id"] == zone, "veg_share"] < 0.15).sum())
         d = client.get(f"/api/zones/{zone}").json()
         assert d["trees"]["cells_below_target"] == expected
-        assert expected <= d["stats"]["cells_analysed"]
+        assert expected <= d["stats"]["cells_residential"] <= d["stats"]["cells_analysed"]
     assert client.get("/api/zones/3").json()["trees"]["cells_below_target"] is None
     assert client.get("/api/cells/250-0-0").json()["trees"]["cells_below_target"] is None
+
+
+def test_zone_trees_count_residential_cells_only(client, data_dir):
+    cells = gpd.read_parquet(data_dir / "cells_250.parquet")
+    cells = cells[cells["analysed"]]
+    assert (~cells["residential"]).any()  # the fixture has non-residential cells
+    for zone in (1, 2, 4):
+        z = cells[cells["zone_id"] == zone]
+        d = client.get(f"/api/zones/{zone}").json()
+        assert d["trees"]["trees_new"] == int(z.loc[z["residential"], "trees_new"].sum())
+        assert d["trees"]["trees_new_nonres"] == int(z.loc[~z["residential"], "trees_new"].sum())
+        deficit = z.loc[z["residential"], "green_deficit_m2"].sum()
+        assert d["trees"]["trees_for_target"] == math.ceil(deficit / 30)
+    item = client.get("/api/ranking").json()["items"][0]
+    assert item["trees_new_nonres"] is not None and item["residential"] is None
+    cell = client.get("/api/ranking?level=cell&limit=5").json()["items"][0]
+    assert cell["residential"] is not None and cell["trees_new_nonres"] is None
+    assert client.get("/api/cells/250-0-0").json()["trees"]["trees_new_nonres"] is None
 
 
 # ---------------------------------------------------------------------------- simulator
@@ -397,9 +428,9 @@ def test_simulating_zero_trees_changes_nothing(client, url):
 def test_simulating_a_cell_follows_the_crown_area_rule(client):
     sim = client.get(f"/api/cells/250-0-0/simulate?trees=100&weights={CUSTOM}").json()
     b, a = sim["before"], sim["after"]
-    assert sim["added_green_m2"] == 3000 and a["green_m2"] == pytest.approx(b["green_m2"] + 3000)
-    assert a["green_share"] == pytest.approx(a["green_m2"] / 62_500)
-    expected = green_deficit_score(a["green_share"], GREEN_BOUNDS)
+    assert sim["added_veg_m2"] == 3000 and a["veg_m2"] == pytest.approx(b["veg_m2"] + 3000)
+    assert a["veg_share"] == pytest.approx(a["veg_m2"] / 62_500)
+    expected = green_deficit_score(a["veg_share"], GREEN_BOUNDS)
     assert a["score_green_deficit"] == pytest.approx(float(expected))
     w = sim["weights"]["green_deficit"]
     assert w == pytest.approx(0.5) and not sim["is_default"]
@@ -408,24 +439,32 @@ def test_simulating_a_cell_follows_the_crown_area_rule(client):
     assert a["ipf"] <= b["ipf"] and a["rank"] >= b["rank"] and a["ipf_class"] <= b["ipf_class"]
 
 
-def test_planting_the_full_deficit_closes_the_green_gap(client):
-    for url in ("/api/cells/250-0-0", "/api/zones/1"):
-        target = client.get(url).json()["trees"]["trees_for_target"]
-        sim = client.get(f"{url}/simulate?trees={target}").json()
-        assert sim["trees_for_target"] == target
-        assert sim["after"]["green_share"] >= 0.15 - 1e-9
-        assert sim["after"]["score_green_deficit"] <= sim["before"]["score_green_deficit"]
+def test_planting_the_full_deficit_closes_the_green_gap(client, data_dir):
+    url = "/api/cells/250-0-0"
+    target = client.get(url).json()["trees"]["trees_for_target"]
+    sim = client.get(f"{url}/simulate?trees={target}").json()
+    assert sim["trees_for_target"] == target
+    assert sim["after"]["veg_share"] >= 0.15 - 1e-9
+    assert sim["after"]["score_green_deficit"] <= sim["before"]["score_green_deficit"]
+    # a zone: every residential cell reaches the target (non-residential cells get no trees)
+    cells = gpd.read_parquet(data_dir / "cells_250.parquet")
+    z = cells[cells["analysed"] & cells["residential"] & (cells["zone_id"] == 1)]
+    target = client.get("/api/zones/1").json()["trees"]["trees_for_target"]
+    sim = client.get(f"/api/zones/1/simulate?trees={target}").json()
+    reached = green_deficit_score(np.maximum(z["veg_share"], 0.15), GREEN_BOUNDS)
+    expected = float((reached * z["residents"]).sum() / z["residents"].sum())
+    assert sim["after"]["score_green_deficit"] == pytest.approx(expected, abs=0.5)
 
 
 def _zone_expected_score(cells: pd.DataFrame, trees: int, spread_by: str) -> float:
     added = trees * 30 * cells[spread_by] / cells[spread_by].sum()
-    scores = green_deficit_score((cells["green_m2"] + added) / cells["area_m2"], GREEN_BOUNDS)
+    scores = green_deficit_score((cells["veg_m2"] + added) / cells["area_m2"], GREEN_BOUNDS)
     return float((scores * cells["residents"]).sum() / cells["residents"].sum())
 
 
 def test_simulating_a_zone_spreads_trees_by_deficit(client, data_dir):
     cells = gpd.read_parquet(data_dir / "cells_250.parquet")
-    cells = cells[cells["analysed"]]
+    cells = cells[cells["analysed"] & cells["residential"]]  # trees go to residential cells (Q50)
     deficits = cells.groupby("zone_id")["green_deficit_m2"].sum()
     zone = int(deficits.idxmax())
     assert deficits[zone] > 0
@@ -434,7 +473,7 @@ def test_simulating_a_zone_spreads_trees_by_deficit(client, data_dir):
     assert sim["after"]["score_green_deficit"] == pytest.approx(expected)
     assert sim["level"] == "zone" and sim["after"]["class_key"] in CLASS_KEYS
     # a zone without deficit: trees are spread by cell area instead
-    assert (deficits == 0).any()  # the fixture (seed 7) has one
+    assert (deficits == 0).any()  # zone 5 in the fixture
     zone = int(deficits[deficits == 0].index[0])
     expected = _zone_expected_score(cells[cells["zone_id"] == zone], 200, "area_m2")
     sim = client.get(f"/api/zones/{zone}/simulate?trees=200").json()

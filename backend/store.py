@@ -146,16 +146,17 @@ class Store:
 
         self.layers = {k: (data_dir / f).read_bytes() for k, f in LAYER_FILES.items()}
 
-        # Per zone: analysed cells below the target green share (zone card, Q42)
+        # Per zone: residential analysed cells below the target vegetation share (Q42, Q49, Q50)
         size = self.metadata["zones"]["aggregated_from_cell_size_m"]
         cells = self.levels[f"cells_{size}"].frame
-        cells = cells[cells["analysed"].astype(bool)]
-        below = cells["green_share"] < self.metadata["trees"]["target_green_share"]
+        cells = cells[cells["analysed"].astype(bool) & cells["residential"].astype(bool)]
+        below = cells["veg_share"] < self.metadata["trees"]["target_green_share"]
         self.cells_below_target: dict[int, int] = below.groupby(cells["zone_id"]).sum().to_dict()
         self._scenario = lru_cache(maxsize=SCENARIO_CACHE_SIZE)(self._compute_scenario)
 
     def _add_level(self, name: str, frame: gpd.GeoDataFrame, info: dict, top_n: int) -> None:
-        required = ["analysed", "ipf", "ipf_class", "rank", *SENSITIVITY_COLUMNS]
+        required = ["analysed", "ipf", "ipf_class", "rank", "veg_m2", *SENSITIVITY_COLUMNS]
+        required += ["residential"] if name.startswith("cells") else ["trees_new_nonres"]
         required += [f"score_{k}" for k in self.active]
         missing = [c for c in required if c not in frame.columns]
         if missing:
@@ -249,11 +250,12 @@ class Store:
     ) -> dict[str, Any]:
         """What-if: plant `n_trees` in one analysed cell or zone (Q37).
 
-        Each tree adds its crown area to the green area. Only the green-deficit score changes: it
-        is recomputed with the build's normalisation bounds, then the IPF with the scenario
-        weights. Class and rank are placed against the current scenario (rest of the city
-        unchanged). For a zone, the trees are spread over its analysed cells in proportion to
-        their green deficit, and the zone score is re-aggregated (population-weighted mean).
+        Each tree adds its crown area to the vegetated area (Q49). Only the green-deficit score
+        changes: it is recomputed with the build's normalisation bounds, then the IPF with the
+        scenario weights. Class and rank are placed against the current scenario (rest of the
+        city unchanged). For a zone, the trees are spread over its residential analysed cells
+        (Q50) in proportion to their green deficit, and the zone score is re-aggregated
+        (population-weighted mean).
         """
         sc = self.scenario(level, weights)
         row = level.frame.loc[item_id]
@@ -265,11 +267,15 @@ class Store:
             size = self.metadata["zones"]["aggregated_from_cell_size_m"]
             cells_level = self.levels[f"cells_{size}"]
             f = cells_level.frame
-            cells = f[(f["zone_id"] == item_id) & f["analysed"].astype(bool)]
+            cells = f[
+                (f["zone_id"] == item_id)
+                & f["analysed"].astype(bool)
+                & f["residential"].astype(bool)
+            ]
             bounds = cells_level.info["normalisation"]["green_deficit"]
             cell_added = spread_trees(n_trees, cells["green_deficit_m2"], cells["area_m2"]) * crown
             cell_scores = green_deficit_score(
-                (cells["green_m2"] + cell_added) / cells["area_m2"], bounds
+                (cells["veg_m2"] + cell_added) / cells["area_m2"], bounds
             )
             residents = cells["residents"].to_numpy(dtype=float)
             score_after = float((cell_scores * residents).sum() / residents.sum())
@@ -277,20 +283,20 @@ class Store:
         else:
             bounds = level.info["normalisation"]["green_deficit"]
             area = float(row["area_m2"])
-            green_share = (row["green_m2"] + added_m2) / area
-            score_after = float(green_deficit_score(green_share, bounds))
+            veg_share = (row["veg_m2"] + added_m2) / area
+            score_after = float(green_deficit_score(veg_share, bounds))
 
         w = sc.weights["green_deficit"]
         score_before = float(row["score_green_deficit"])
         ipf_before = float(sc.items.at[item_id, "ipf"])
         ipf_after = ipf_before + w * (score_after - score_before)
         others = sc.items["ipf"].drop(index=item_id).dropna().to_numpy(dtype=float)
-        green_before = float(row["green_m2"])
+        veg_before = float(row["veg_m2"])
 
-        def state(green_m2: float, score: float, ipf: float) -> dict[str, Any]:
+        def state(veg_m2: float, score: float, ipf: float) -> dict[str, Any]:
             return {
-                "green_m2": green_m2,
-                "green_share": green_m2 / area,
+                "veg_m2": veg_m2,
+                "veg_share": veg_m2 / area,
                 "score_green_deficit": score,
                 "ipf": ipf,
                 "ipf_class": int(np.searchsorted(sc.class_edges, ipf, side="right") + 1),
@@ -302,13 +308,13 @@ class Store:
             "weights": sc.weights,
             "is_default": sc.is_default,
             "trees": n_trees,
-            "added_green_m2": added_m2,
+            "added_veg_m2": added_m2,
             "crown_area_m2": crown,
             "target_green_share": self.metadata["trees"]["target_green_share"],
             "trees_estimate": to_json_value(row["trees_new"]),
             "trees_for_target": math.ceil(deficit / crown),
-            "before": state(green_before, score_before, ipf_before),
-            "after": state(green_before + added_m2, score_after, ipf_after),
+            "before": state(veg_before, score_before, ipf_before),
+            "after": state(veg_before + added_m2, score_after, ipf_after),
         }
 
     # ------------------------------------------------------------------ GeoJSON

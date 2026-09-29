@@ -1,7 +1,7 @@
 # Metodologia dell'Indice di Priorità di Forestazione (IPF)
 
 > **Lingua**: questo file è scritto e mantenuto **in italiano** (eccezione alla regola "tutto in inglese tranne la UI", vedi `CLAUDE.md`).
-> **Stato**: aggiornato alla fine della Fase 1 (pipeline completa), 29 settembre 2026. Build di riferimento: `uv run python -m pipeline build`.
+> **Stato**: aggiornato alla Fase 3 (frontend), 29 settembre 2026. Build di riferimento: `uv run python -m pipeline build`.
 > **Scopo**: descrivere *come* è costruito il modello e *perché* abbiamo fatto ogni scelta. È la fonte unica sulla metodologia: da qui nasceranno la pagina "Metodologia e fonti" dell'app (FR-47) e le risposte alle domande della giuria.
 >
 > Documenti collegati:
@@ -25,7 +25,7 @@ dati aperti → pulizia → griglia 250/500 m → indicatori grezzi → area di 
 
 | Indicatore | Cosa misura | Peso effettivo |
 |---|---|---|
-| Deficit di verde | quanto poco verde pubblico c'è nella cella | 33,3% |
+| Deficit di verde | quanta poca vegetazione c'è nella cella (satellite Sentinel-2) | 33,3% |
 | Inquinamento | NO₂, PM10, PM2.5 rispetto ai limiti UE 2030 | 22,2% |
 | Traffico | veicoli giornalieri misurati agli incroci vicini | 22,2% |
 | Popolazione | residenti per km² (persone esposte) | 22,2% |
@@ -47,12 +47,13 @@ Questi principi vengono dall'idea originale e valgono per tutto il progetto:
 
 | Dato | Fonte | Periodo | Uso nel modello |
 |---|---|---|---|
-| Aree verdi (D1) | Comune di Bari, SHP (593 poligoni) | 2024 | deficit di verde, stima alberi |
+| Aree verdi (D1) | Comune di Bari, SHP (593 poligoni) | 2024 | solo contesto: livello sulla mappa e valore descrittivo nella scheda (dalla **Q49**) |
+| Sentinel-2 L2A (D11) | Copernicus (UE/ESA), tramite Microsoft Planetary Computer: mediana dell'NDVI di 19 immagini senza nuvole, pixel di 10 m | giugno – agosto 2025 | deficit di verde, stima alberi (**Q49**) |
 | Flussi di traffico giornalieri (D2) | Comune di Bari, CSV mensili | set. 2025 – giu. 2026 | traffico |
 | Posizione centraline semaforiche (D3) | Comune di Bari, JSON mensili | come D2 | traffico |
 | Stazioni qualità dell'aria (D5) | ARPA Puglia, GeoJSON | – | posizione delle 5 stazioni di Bari |
 | Medie annuali 2025 (NO₂, PM10, PM2.5) | ARPA Puglia, *Relazione annuale 2025*, trascritte a mano in `data/manual/arpa_annual_2025.csv` | 2025 | inquinamento |
-| Popolazione residente (D6) | Comune di Bari, 4 CSV per fascia d'età, per indirizzo | – | popolazione |
+| Popolazione residente (D6) | Comune di Bari, 4 CSV per fascia d'età, per indirizzo | al 6 gennaio 2024 | popolazione |
 | Numeri civici, quartieri, confine comunale (D8) | SIT Comune di Bari | – | posizione dei residenti, quartieri, confine |
 | Uso del Suolo 2011, superfici artificiali | Regione Puglia | 2011 | area di studio |
 | E-PRTR (D10) | Agenzia Europea dell'Ambiente, v16 | 2007–2024 | pressione industriale (solo contesto) |
@@ -81,18 +82,24 @@ Una cella è analizzata se:
 - il suo quartiere è coperto dai dati di popolazione, **e**
 - ha una densità di almeno **800 residenti/km²**, **oppure** almeno il **30%** della sua superficie è "superficie artificiale" (classe 1 dell'Uso del Suolo 2011) (**Q6**).
 
-*Perché*: il dato delle aree verdi copre solo il **verde pubblico urbano**. Senza questa maschera, campagne e aree agricole risulterebbero "senza verde" e avrebbero una priorità falsamente alta.
+*Perché*: lo strumento confronta le zone della città costruita. Senza questa maschera, campagne e aree agricole entrerebbero nel confronto con i quartieri urbani. (All'inizio il motivo principale era che le aree verdi del Comune coprono solo il verde pubblico, e le campagne sarebbero risultate "senza verde"; dalla **Q49** il verde si misura da satellite, ma la maschera resta.)
 
 - La soglia di 800/km² equivale a **50 residenti in una cella da 250 m** (valore deciso in **Q6**), espressa come densità (**Q22**). Così la stessa regola vale per le celle da 500 m (200 residenti) e per le celle di bordo ritagliate.
 - **Torre a Mare è esclusa**: non compare nei dati di popolazione, quindi il suo punteggio di popolazione sarebbe falsamente zero (**Q4a**).
 - Risultato a 250 m: **1.127 celle analizzate** su 2.006, con il 99,5% dei residenti. Delle 1.127 celle, 449 superano entrambe le soglie, 6 solo quella di popolazione, **672 solo quella di superficie artificiale** (zone industriali, porto, infrastrutture, servizi: il 45% di queste ha zero residenti).
+- **Celle non residenziali** (**Q50**): 302 celle analizzate a 250 m (30 a 500 m) non hanno residenti (conteggio arrotondato, come appare nella scheda). Restano analizzate e hanno la loro classe di priorità, ma i loro alberi sono contati a parte nei totali dei quartieri (§9, §10) e il simulatore non vi pianta alberi (§10.1).
 
 ## 5. Indicatori
 
 ### 5.1 Deficit di verde
-- **Valore grezzo**: quota della cella coperta da aree verdi pubbliche (`green_share`, 0–1). I poligoni vengono prima uniti, così le sovrapposizioni contano una sola volta.
-- **Punteggio**: `deficit = 100 − punteggio normalizzato della copertura`. Più verde c'è, più il punteggio è basso.
-- **Nota**: il 49% delle celle analizzate non contiene alcun verde pubblico mappato, quindi ha deficit 100 (vedi §13).
+- **Valore grezzo** (**Q49**): quota della cella coperta da **vegetazione vista da satellite** (`veg_share`, 0–1).
+  - Fonte: Sentinel-2 L2A (Copernicus), pixel di 10 m. Per ogni pixel si calcola l'NDVI (indice di verde: circa 0 per cemento e acqua, oltre 0,4 per vegetazione rigogliosa) in ciascuna delle **19 immagini senza nuvole** (copertura < 1%) di **giugno–agosto 2025**, escludendo nuvole, ombre e acqua (classificazione SCL), e se ne prende la **mediana**.
+  - Un pixel è vegetato se la mediana è almeno **0,30**. La vegetazione di una cella è il numero di pixel vegetati il cui centro cade nella cella, per 100 m².
+  - Il composito è scaricato una volta da `pipeline download` (Microsoft Planetary Computer, senza account) e salvato in `data/raw/`, con l'elenco delle immagini nel manifest. Il 99,97% dei pixel delle celle analizzate ha un valore valido.
+- **Punteggio**: `deficit = 100 − punteggio normalizzato della copertura`. Più vegetazione c'è, più il punteggio è basso.
+- *Perché il satellite (Q49)*: con le sole aree verdi del Comune il 49% delle celle analizzate non aveva alcun verde e otteneva deficit 100: l'indicatore funzionava quasi come un sì/no. Con la vegetazione da satellite le celle con deficit 100 sono 117 (10%). Inoltre i poligoni del Comune spesso non sono vegetati visti dall'alto: nelle alberate stradali (il poligono include la strada) l'NDVI mediano è 0,11 e solo il 5% dei pixel supera 0,30; nei cimiteri 0,16 (3%); nei campi sportivi 0,13 (7%); in Lama Balice 0,26 (36%). Le due misure sono di fatto indipendenti (Spearman 0,00 sulle celle analizzate).
+- *Perché l'estate e la soglia 0,30*: in Puglia erba e colture sono verdi in primavera e secche d'estate. La mediana estiva conta la vegetazione che resta verde quando fa caldo (alberi, arbusti, prati irrigati), cioè quella che fa ombra quando serve. Con soglia 0,40 il 33% delle celle risulterebbe senza vegetazione (l'indicatore tornerebbe a saturare); usando il massimo dell'anno le aree agricole ai margini sembrerebbero molto verdi.
+- Le aree verdi del Comune restano sulla mappa come **livello di contesto** e la loro quota compare nella scheda come valore descrittivo.
 
 ### 5.2 Traffico
 Il traffico si misura solo agli incroci con centralina, quindi va "stimato" per le celle intorno.
@@ -177,7 +184,7 @@ Estremi usati (griglia 250 m):
 | Indicatore | 0 punti | 100 punti |
 |---|---|---|
 | Inquinamento (rapporto) | ≤ 0,90 | ≥ 1,10 |
-| Copertura verde | 0% (quindi deficit 100) | ≥ 46,8% (quindi deficit 0) |
+| Copertura di vegetazione | 0% (quindi deficit 100) | ≥ 25,6% (quindi deficit 0) |
 | Traffico (indice) | 0 | ≥ 44.200 |
 | Densità di popolazione | 0 | ≥ 18.800 ab./km² |
 
@@ -199,10 +206,10 @@ IPF = Σ pesoᵢ × punteggioᵢ        (Σ pesoᵢ = 1, punteggioᵢ ∈ [0, 10
 - **Pesi personalizzati** (scenario): l'utente indica un valore per ciascun indicatore attivo, tra 0 e 100. I valori sono **normalizzati sul loro totale** (che deve essere positivo), quindi non devono sommare a 100 (**Q36**). Un peso diverso da 0 per un indicatore escluso (industria) viene rifiutato (**Q30**). Con i pesi personalizzati si ricalcolano IPF, classi (quartili), posizioni in classifica e verifica di robustezza. Punteggi, alberi e aggregazione per quartiere non dipendono dai pesi e restano invariati.
 
 ## 8. Classi di priorità
-Quattro classi (**Q11**), **bassa / media / medio-alta / alta** (verde / giallo / arancione / rosso), con confini ai **quartili** dell'IPF delle celle analizzate. Per i quartieri si usano i quartili dei 16 quartieri analizzati.
+Quattro classi (**Q11**), **bassa / media / medio-alta / alta**, colorate dal giallo chiaro al rosso scuro (`#FAC775`, `#F0997B`, `#D85A30`, `#993C1D`, **Q46**), con confini ai **quartili** dell'IPF delle celle analizzate. Per i quartieri si usano i quartili dei 16 quartieri analizzati.
 
-- Confini a 250 m: 53,8 / 65,4 / 77,9.
-- Confini per i quartieri: 72,3 / 78,9 / 86,2.
+- Confini a 250 m: 46,4 / 60,2 / 75,6.
+- Confini per i quartieri: 70,3 / 79,3 / 87,5.
 - *Perché i quartili*: lo scopo dello strumento è ordinare le zone per decidere dove intervenire prima, e i quartili danno sempre una mappa leggibile. Con soglie fisse (25/50/75) le celle rosse potrebbero essere pochissime o nessuna.
 - La UI deve dire "priorità relativa rispetto al resto della città".
 
@@ -211,52 +218,53 @@ Per ogni quartiere si usano le sue celle analizzate della griglia da 250 m:
 
 - i **punteggi** sono la **media pesata sulla popolazione** dei punteggi delle celle (FR-09);
 - l'IPF del quartiere è la media pesata sulla popolazione degli IPF delle celle, e resta lineare nei pesi, quindi il backend può ricalcolarlo direttamente;
-- residenti, verde, deficit e alberi sono **somme**; densità e quota di verde si riferiscono alla superficie delle celle analizzate.
+- residenti, verde pubblico e vegetazione sono **somme** su tutte le celle analizzate; densità e quote si riferiscono alla superficie delle celle analizzate;
+- deficit di verde, superficie piantabile e alberi sono **somme sulle sole celle abitate**; gli alberi delle celle non residenziali sono riportati a parte (`trees_new_nonres`, **Q50**). Le celle senza residenti hanno comunque peso 0 nelle medie pesate sulla popolazione, quindi non influiscono sui punteggi del quartiere.
 
 *Perché pesare sulla popolazione*: la priorità di un quartiere deve riflettere dove vivono le persone. Una cella industriale senza residenti non deve pesare quanto un isolato densamente abitato.
 
 ## 10. Stima del numero di alberi
 ```
 verde_obiettivo_m2   = quota_obiettivo × area_cella
-deficit_m2           = max(0, verde_obiettivo_m2 − verde_attuale_m2)
+deficit_m2           = max(0, verde_obiettivo_m2 − vegetazione_m2)       (vegetazione da satellite, Q49)
 piantabile_m2        = deficit_m2 × frazione_piantabile
 nuovi_alberi         = parte_intera(piantabile_m2 / area_chioma)
 ```
 
 | Parametro (**Q12**) | Valore | Motivazione |
 |---|---|---|
-| Quota obiettivo di verde | **15%** | Dall'idea originale. La pagina metodologica cita anche la regola 3-30-300 (30% di chioma arborea, Konijnendijk 2021), precisando che "chioma" e "aree verdi mappate" non sono la stessa cosa. |
+| Quota obiettivo di verde | **15%** | Dall'idea originale; dalla **Q49** si applica alla vegetazione vista da satellite. La pagina metodologica cita anche la regola 3-30-300 (30% di chioma arborea, Konijnendijk 2021). |
 | Frazione piantabile del deficit | **25%** | Pura ipotesi: non esistono dati sullo spazio piantabile a Bari (edifici, strade, sottoservizi). Mostrata nella pagina metodologica, non modificabile nell'app (**Q43**): per esplorare scenari c'è il simulatore (§10.1). |
 | Area di chioma per albero | **30 m²** | Albero di taglia media, chioma di circa 6 m. |
 
-- Esempio: una cella intera da 250 m (62.500 m²) senza verde ha un obiettivo di 9.375 m² e 2.344 m² piantabili, quindi **78 alberi**.
-- Totale per le celle analizzate (250 m): circa **54.900 alberi**.
+- Esempio: una cella intera da 250 m (62.500 m²) senza vegetazione ha un obiettivo di 9.375 m² e 2.344 m² piantabili, quindi **78 alberi**.
+- Totale per le celle analizzate (250 m): **45.278 alberi**, di cui 12.345 in celle non residenziali. I totali dei quartieri contano solo le celle abitate: 32.933 alberi (**Q50**).
 - È una **stima di modello**, e la UI lo dichiara sempre.
 
 ### 10.1 Simulatore ("cosa succede se pianto N alberi?")
 Per una cella o un quartiere analizzato, il simulatore stima l'effetto di N nuovi alberi (**Q37**):
 
 ```
-verde_dopo_m2      = verde_attuale_m2 + N × area_chioma          (30 m² per albero)
-quota_verde_dopo   = verde_dopo_m2 / area
+vegetazione_dopo_m2 = vegetazione_m2 + N × area_chioma          (30 m² per albero)
+quota_verde_dopo    = vegetazione_dopo_m2 / area
 punteggio_deficit  = 100 − minmax(quota_verde_dopo)              (stessi limiti p5–p95 del calcolo, §6)
 IPF_dopo           = IPF_prima + peso_verde × (punteggio_deficit_dopo − punteggio_deficit_prima)
 ```
 
 - **Cambia solo l'indicatore del verde.** Inquinamento, traffico e popolazione restano invariati: è una simulazione semplificata e la UI lo dichiara.
 - **Classe e posizione** del risultato sono calcolate rispetto al resto della città, che resta com'è (stessi confini di classe dello scenario corrente).
-- **Quartieri**: gli N alberi sono ripartiti tra le celle analizzate da 250 m del quartiere **in proporzione al loro deficit di verde** (in proporzione all'area se nessuna cella ha deficit). Poi il punteggio del quartiere si ricalcola come media pesata sulla popolazione (§9).
+- **Quartieri**: gli N alberi sono ripartiti tra le celle **abitate** analizzate da 250 m del quartiere (**Q50**) **in proporzione al loro deficit di verde** (in proporzione all'area se nessuna cella ha deficit). Poi il punteggio del quartiere si ricalcola come media pesata sulla popolazione (§9).
 - Il simulatore mostra due riferimenti:
   - la **stima del modello** (`nuovi_alberi`, §10), che considera solo la quota piantabile (25%) del deficit;
   - gli **alberi necessari per il 15%**, cioè `deficit_m2 / area_chioma`, arrotondato per eccesso.
 
   Il secondo numero è di solito circa 4 volte il primo: raggiungere l'obiettivo richiederebbe più spazio di quello stimato come piantabile.
-- *Nota sui quartieri*: il deficit è la somma dei deficit delle singole celle. Un quartiere può quindi avere una quota media di verde superiore al 15% e comunque un deficit, se il verde è concentrato in poche celle. Con i dati attuali succede per Murat (16,3%), Libertà (20,9%) e San Paolo (23,2%).
-- *Nella scheda del quartiere* (**Q42**) non si mostra "quota attuale → 15%", ma la quota media e il numero di celle sotto l'obiettivo, ad esempio *"Verde pubblico medio 20,9% · 14 celle su 29 sotto il 15%"* (Libertà; Murat 13 su 25, San Paolo 46 su 82). Nella scheda della cella resta "8,2% → 15%".
+- *Nota sui quartieri*: il deficit è la somma dei deficit delle singole celle. Un quartiere può quindi avere una quota media di verde superiore al 15% e comunque un deficit, se il verde è concentrato in poche celle. Con la vegetazione da satellite nessun quartiere supera in media il 15% (il più alto è Carrassi, 11,4%).
+- *Nella scheda del quartiere* (**Q42**) non si mostra "quota attuale → 15%", ma la quota media e il numero di celle sotto l'obiettivo, contando solo le celle abitate, ad esempio *"Vegetazione media 3,0% · 25 celle abitate su 27 sotto il 15%"* (Libertà; Murat 21 su 22, San Paolo 49 su 56). Nella scheda della cella resta "quota attuale → 15%".
 - *Esempio* (Libertà, pesi predefiniti):
-  - IPF 86,3, classe alta, 4° posto;
-  - con i 601 alberi stimati: IPF 85,1, classe medio-alta, 5° posto;
-  - con i 2.432 alberi necessari per il 15% in ogni cella: IPF 81,6, 6° posto.
+  - IPF 91,5, classe alta, 4° posto;
+  - con i 1.678 alberi stimati: IPF 87,1, classe medio-alta, 4° posto;
+  - con i 6.763 alberi necessari per il 15% in ogni cella abitata: IPF 73,9, classe media, 11° posto.
 
 ## 11. Spiegazione ("Perché questa zona è prioritaria?")
 - Per ogni zona si ordinano i contributi `pesoᵢ × punteggioᵢ` e si mostrano i **3 principali**. Esempio: *"Traffico elevato (83/100): contribuisce per 18 punti all'indice."*
@@ -285,45 +293,45 @@ IPF_dopo           = IPF_prima + peso_verde × (punteggio_deficit_dopo − punte
 
 | | Spearman medio | Top N mantenuto (media) | Zone robuste |
 |---|---|---|---|
-| Quartieri (16) | 0,98 | 9,98 su 10 | 14 su 16 (100% del top 10) |
-| Celle 250 m (1.127) | 0,98 | 101 su 113 | 72% (77% del top 10%) |
-| Celle 500 m (315) | 0,98 | 27 su 32 | 63% (69% del top 10%) |
+| Quartieri (16) | 1,00 | 9,62 su 10 | 15 su 16 (90% del top 10) |
+| Celle 250 m (1.127) | 0,99 | 108 su 113 | 75% (90% del top 10%) |
+| Celle 500 m (315) | 0,99 | 31 su 32 | 74% (91% del top 10%) |
 
-- Nel test uno alla volta, **il top 10 dei quartieri non cambia mai**.
-- I due quartieri "sensibili" sono Palese – Macchie e Loseto, al 12° e 13° posto, vicini al confine tra due classi.
+- Nel test uno alla volta il top 10 dei quartieri cambia al massimo di un quartiere (9 su 10 mantenuti in 4 test su 8).
+- L'unico quartiere "sensibile" è San Paolo, al 10° posto, sul confine del top 10 (tra il 9° e l'11° posto).
 - Nelle celle, l'instabilità si concentra ai confini tra le classi, com'è naturale.
 
 ## 13. Risultati principali (quartieri, pesi predefiniti)
 
-| Pos. | Quartiere | IPF | Classe | Intervallo posizione | Robusto | Nuovi alberi |
-|---|---|---|---|---|---|---|
-| 1 | Madonnella | 95,0 | alta | 1–1 | sì | 353 |
-| 2 | Murat | 87,5 | alta | 2–4 | sì | 381 |
-| 3 | San Pasquale | 87,0 | alta | 2–4 | sì | 2.755 |
-| 4 | Libertà | 86,3 | alta | 2–5 | sì | 601 |
-| 5 | San Nicola | 86,2 | medio-alta | 3–5 | sì | 480 |
-| 6 | Carrassi | 83,2 | medio-alta | 6–6 | sì | 1.813 |
-| 7 | Picone | 80,2 | medio-alta | 7–9 | sì | 6.850 |
-| 8 | Japigia | 79,4 | medio-alta | 7–10 | sì | 4.617 |
-| 9 | Marconi – San Girolamo – Fesca | 78,4 | media | 7–10 | sì | 3.820 |
-| 10 | Stanic | 77,3 | media | 8–10 | sì | 11.482 |
-| 11 | Santo Spirito | 72,9 | media | 11–13 | sì | 3.080 |
-| 12 | Palese – Macchie | 72,7 | media | 11–13 | no | 8.221 |
-| 13 | Loseto | 71,3 | bassa | 11–13 | no | 394 |
-| 14 | San Paolo | 65,7 | bassa | 14–16 | sì | 2.571 |
-| 15 | Ceglie del Campo | 63,5 | bassa | 14–16 | sì | 2.139 |
-| 16 | Carbonara | 63,5 | bassa | 14–16 | sì | 5.298 |
-| – | Torre a Mare | – | non analizzato | – | – | – |
+| Pos. | Quartiere | IPF | Classe | Intervallo posizione | Robusto | Vegetazione | Nuovi alberi (celle abitate) | + aree non residenziali |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Madonnella | 97,0 | alta | 1–1 | sì | 1,9% | 508 | 0 |
+| 2 | Murat | 95,9 | alta | 2–2 | sì | 2,3% | 1.397 | 74 |
+| 3 | San Nicola | 95,2 | alta | 3–3 | sì | 2,1% | 400 | 363 |
+| 4 | Libertà | 91,5 | alta | 4–4 | sì | 3,0% | 1.678 | 113 |
+| 5 | San Pasquale | 86,2 | medio-alta | 5–5 | sì | 9,5% | 1.952 | 196 |
+| 6 | Japigia | 85,5 | medio-alta | 6–6 | sì | 6,2% | 4.639 | 807 |
+| 7 | Carrassi | 83,9 | medio-alta | 7–7 | sì | 11,4% | 1.361 | 156 |
+| 8 | Picone | 82,1 | medio-alta | 8–8 | sì | 10,9% | 4.005 | 705 |
+| 9 | Marconi – San Girolamo – Fesca | 76,5 | media | 9–10 | sì | 8,3% | 2.605 | 451 |
+| 10 | San Paolo | 74,8 | media | 9–11 | no | 7,5% | 2.983 | 1.089 |
+| 11 | Stanic | 74,5 | media | 10–11 | sì | 9,1% | 4.666 | 2.138 |
+| 12 | Santo Spirito | 71,3 | media | 12–12 | sì | 9,0% | 1.714 | 504 |
+| 13 | Palese – Macchie | 67,2 | bassa | 13–13 | sì | 6,3% | 1.776 | 3.940 |
+| 14 | Ceglie del Campo | 60,3 | bassa | 14–15 | sì | 7,2% | 807 | 593 |
+| 15 | Carbonara | 57,7 | bassa | 15–16 | sì | 11,2% | 2.157 | 1.071 |
+| 16 | Loseto | 55,5 | bassa | 14–16 | sì | 6,7% | 285 | 145 |
+| – | Torre a Mare | – | non analizzato | – | – | – | – | – |
 
 **Lettura**:
-- In testa ci sono i quartieri centrali densi con poco verde pubblico.
-- In fondo ci sono le frazioni esterne, con inquinamento e traffico misurati più bassi.
-- L'area industriale ASI (Stanic, San Paolo) è analizzata per la sua superficie artificiale, ma ha punteggio di popolazione vicino a 0.
-- Gli alberi sono più numerosi nei quartieri grandi con molte celle a basso verde (Stanic, Palese, Picone). La priorità più alta è invece nei quartieri piccoli e densi.
+- In testa ci sono i quartieri centrali densi, con pochissima vegetazione (2–3% della superficie).
+- In fondo ci sono le frazioni esterne, con inquinamento e traffico misurati più bassi e più vegetazione.
+- L'area industriale ASI (Stanic, San Paolo) è analizzata per la sua superficie artificiale, ma ha punteggio di popolazione vicino a 0; molti dei suoi alberi finiscono nella colonna delle aree non residenziali (2.138 a Stanic, 3.940 a Palese – Macchie).
+- Gli alberi nelle aree abitate sono più numerosi nei quartieri grandi con poca vegetazione (Stanic, Japigia, Picone). La priorità più alta è invece nei quartieri piccoli e densi del centro.
 
 ## 14. Limiti noti
-1. **Solo verde pubblico.** Il 49% delle celle analizzate non ha verde pubblico mappato e ottiene deficit 100: giardini privati, verde agricolo e alberi stradali non mappati sono invisibili. Estensione possibile: NDVI da Sentinel-2.
-2. **Area di studio dominata dalle superfici artificiali.** 672 delle 1.127 celle sono analizzate solo per la soglia del 30% di superficie artificiale: zone industriali, porto, infrastrutture. L'Uso del Suolo è del 2011.
+1. **Vegetazione da satellite a 10 m** (**Q49**). Alberi isolati, siepi e aiuole più piccoli di un pixel possono sfuggire, e un pixel misto (metà chioma, metà asfalto) può restare sotto la soglia. È la situazione dell'estate 2025; la soglia NDVI 0,30 è una scelta dichiarata (§5.1).
+2. **Area di studio dominata dalle superfici artificiali.** 672 delle 1.127 celle sono analizzate solo per la soglia del 30% di superficie artificiale: zone industriali, porto, infrastrutture. L'Uso del Suolo è del 2011. Le 302 celle senza residenti restano in classifica (di solito in basso), ma i loro alberi sono contati a parte (**Q50**).
 3. **Traffico noto solo vicino alle centraline.** 66 incroci con dati. Oltre ~910 m da ogni centralina il traffico è 0, cioè *non misurato*, non necessariamente *assente* (31% delle celle). A ~910 m il punteggio scende bruscamente a 0.
 4. **Inquinamento da 5 stazioni.** Gradiente molto liscio, dati ARPA soggetti a validazione.
 5. **Popolazione incompleta.** Circa il 17% dei residenti manca dai dati; il 7,7% è posizionato per quartiere e non per indirizzo; Torre a Mare è esclusa.
@@ -345,9 +353,13 @@ IPF_dopo           = IPF_prima + peso_verde × (punteggio_deficit_dopo − punte
 | Robustezza | `sensitivity.*` | `pipeline/sensitivity.py` |
 | Ricalcolo con pesi personalizzati (API) | `metadata.json` (pesi predefiniti, `sensitivity`) | `backend/store.py` |
 | Simulatore alberi | `trees.crown_area_m2`, limiti di normalizzazione in `metadata.json` | `pipeline/model.py` (`green_deficit_score`, `spread_trees`), `backend/store.py` |
+| Vegetazione da satellite | `sources.sentinel2_ndvi`, `vegetation.ndvi_threshold` | `pipeline/satellite.py` (download del composito e conteggio per cella) |
 
 ## 16. Storico delle modifiche
 - **2026-09-29**: prima versione, alla fine della Fase 1. Include le decisioni Q20–Q29 prese durante l'implementazione.
 - **2026-09-29** (Fase 2, backend): regole dei pesi personalizzati (§7, **Q30**) e verifica di robustezza con pesi pari a 0 o troppo concentrati (§12, **Q31**). Nessun cambiamento ai risultati con i pesi predefiniti.
 - **2026-09-29** (Fase 3.0, confronto con il prototipo UI): pesi personalizzati normalizzati sul totale (§7, **Q36**); nuovo simulatore alberi (§10.1, **Q37**). Confermate le 4 classi a quartili (**Q34**) e l'esclusione dell'industria dall'indice (**Q35**). Nessun cambiamento ai risultati con i pesi predefiniti.
 - **2026-09-29** (Fase 3.0): la frazione piantabile non è modificabile nell'app (§10, **Q43**); nella scheda del quartiere si mostra il numero di celle sotto l'obiettivo del 15% (§10.1, **Q42**).
+- **2026-09-29** (Fase 3, frontend): colori delle classi presi dalla palette del prototipo (§8, **Q46**; prima "verde / giallo / arancione / rosso"). Nessun cambiamento al modello né ai risultati.
+- **2026-09-29** (Fase 3): indicata la data di riferimento della popolazione (6 gennaio 2024, dal portale open data del Comune di Bari) nella tabella dei dati (§3).
+- **2026-09-29** (Fase 3, prima della demo, **Q33** risolta): il deficit di verde e la stima degli alberi usano la **vegetazione da satellite** Sentinel-2 (mediana NDVI estate 2025, soglia 0,30) al posto delle aree verdi del Comune, che restano come contesto (§3, §5.1, §10, **Q49**). Le **celle senza residenti** restano analizzate ma i loro alberi sono contati a parte e il simulatore non vi pianta alberi (§4.4, §9, §10.1, **Q50**). Cambiano punteggi, classi, classifica e alberi: risultati aggiornati in §6, §8, §10, §12, §13.

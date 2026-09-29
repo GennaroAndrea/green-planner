@@ -38,7 +38,7 @@ uv run python -m pipeline download --only sit   # a single source
 uv run python -m pipeline download --force      # re-download everything
 ```
 
-Downloaded files, sizes and checksums are recorded in `data/raw/manifest.json`.
+Downloaded files, sizes and checksums are recorded in `data/raw/manifest.json`. The satellite vegetation input (`sentinel2_ndvi`) is not a plain file: the download step builds a median NDVI composite from the clear Sentinel-2 summer scenes (Microsoft Planetary Computer, no account needed) and caches it as one GeoTIFF; the scenes used are listed in the manifest.
 
 ```bash
 uv run python -m pipeline build                 # data/raw/ → data/processed/ (about 30 s)
@@ -55,6 +55,15 @@ uv run uvicorn backend.main:app --reload         # API on :8000 (+ frontend/dist
 ```
 
 The backend loads `data/processed/` at startup (override with `GREEN_PLANNER_DATA_DIR`), so run `pipeline build` first. Interactive API docs are at `http://localhost:8000/docs`, and the endpoint list is in [`docs/requirements_and_plan.md`](docs/requirements_and_plan.md) §7.2. Custom weights are passed as `?weights=pollution:25,green_deficit:35,traffic:20,population:20` (one value per active indicator, each 0–100, normalised on their total).
+
+## Frontend
+
+```bash
+(cd frontend && npm run dev)     # dev server on :5173, proxies /api to the backend on :8000
+(cd frontend && npm run build)   # production build into frontend/dist/, then served by the backend at /
+```
+
+React + TypeScript + Vite, MapLibre GL (via `react-map-gl`) on CARTO basemaps, Tailwind CSS and Headless UI. The UI is in Italian, and all its texts live in `frontend/src/i18n/it.ts`. The layout is mobile-first: a bottom sheet on phones (< 640 px), a collapsible side panel on tablets, and a fixed side panel on desktop. The light and dark themes follow the device setting and can be toggled from the header. Fonts are bundled, so the only external requests are the basemap tiles.
 
 ## Development
 

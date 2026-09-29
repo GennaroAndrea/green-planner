@@ -35,9 +35,11 @@ DEV_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"]  # Vite dev ser
 CELL_MAP_COLUMNS = ("zone_id", "analysed", "ipf", "ipf_class", "rank", "robust")
 ZONE_MAP_COLUMNS = ("name", "analysed", "ipf", "ipf_class", "rank", "robust", "trees_new")
 CELL_STATS = ("area_m2", "area_share", "artificial_share", "residents", "vulnerable",
-              "density_km2", "green_m2", "green_share")  # fmt: skip
-ZONE_STATS = ("rione", "covered", "cells_analysed", "analysed_area_m2", "residents",
-              "vulnerable", "density_km2", "green_m2", "green_share")  # fmt: skip
+              "density_km2", "residential", "veg_m2", "veg_share", "green_m2",
+              "green_share")  # fmt: skip
+ZONE_STATS = ("rione", "covered", "cells_analysed", "cells_residential", "analysed_area_m2",
+              "residents", "vulnerable", "density_km2", "veg_m2", "veg_share", "green_m2",
+              "green_share")  # fmt: skip
 GEOJSON = "application/geo+json"
 
 WeightsParam = Annotated[
@@ -218,6 +220,10 @@ def _add_routes(app: FastAPI) -> None:
                         )  # fmt: skip
                     },
                     "trees_new": jv(f.at[idx, "trees_new"]),
+                    "trees_new_nonres": jv(f.at[idx, "trees_new_nonres"])
+                    if level == "zone"
+                    else None,
+                    "residential": jv(f.at[idx, "residential"]) if level == "cell" else None,
                     "residents": jv(f.at[idx, "residents"]),
                     "contributions": {
                         k: float(f.at[idx, f"score_{k}"]) * w for k, w in sc.weights.items()
@@ -322,6 +328,7 @@ def _detail(store: Store, lvl: Level, sc: Scenario, item_id: Any) -> dict:
         "top_drivers": top_drivers(row, sc.weights) if analysed else [],
         "trees": {
             **{k: jv(row[k]) for k in ("green_deficit_m2", "plantable_m2", "trees_new")},
+            "trees_new_nonres": jv(row["trees_new_nonres"]) if is_zone else None,
             "target_green_share": trees_cfg["target_green_share"],
             "trees_for_target": (math.ceil(row["green_deficit_m2"] / crown) if analysed else None),
             "cells_below_target": (

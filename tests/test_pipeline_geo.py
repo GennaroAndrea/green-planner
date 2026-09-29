@@ -99,3 +99,32 @@ def test_place_population_matches_then_spreads():
     assert stats["residents_matched_number"] == 3
     assert stats["residents_spread_by_zone"] == 10
     assert stats["match_rate"] == pytest.approx(8 / 18, abs=1e-4)
+
+
+def test_vegetation_area_counts_pixels_at_or_above_the_threshold(tmp_path):
+    import numpy as np
+    import rasterio
+    from affine import Affine
+
+    from pipeline.satellite import NDVI_SCALE, NODATA, vegetation_area
+
+    # 4×2 pixels of 10 m; left cell: NDVI 0.5, 0.3 (vegetated), 0.29, nodata; right cell: all 0.1
+    ndvi = np.array([[0.5, 0.3, 0.1, 0.1], [0.29, np.nan, 0.1, 0.1]])
+    raw = np.where(np.isnan(ndvi), NODATA, np.round(ndvi * NDVI_SCALE)).astype("int16")
+    path = tmp_path / "ndvi.tif"
+    with rasterio.open(
+        path, "w", driver="GTiff", dtype="int16", count=1, width=4, height=2,
+        crs="EPSG:32633", transform=Affine(10, 0, 600_000, 0, -10, 4_550_020), nodata=NODATA,
+    ) as dst:  # fmt: skip
+        dst.write(raw, 1)
+    grid = gpd.GeoDataFrame(
+        geometry=[
+            box(600_000, 4_550_000, 600_020, 4_550_020),
+            box(600_020, 4_550_000, 600_040, 4_550_020),
+        ],
+        crs="EPSG:32633",
+    )
+    veg_m2, valid, info = vegetation_area(grid, path, 0.3)
+    assert veg_m2.tolist() == [200.0, 0.0]
+    assert valid.tolist() == [0.75, 1.0]
+    assert info["pixel_m2"] == 100

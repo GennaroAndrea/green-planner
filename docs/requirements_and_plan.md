@@ -60,6 +60,7 @@ I downloaded and inspected the real files, not only the catalogue descriptions. 
 | D8 | **Civic numbers + quartieri + municipi + circoscrizioni** (SIT Comune di Bari, "civilario unico") | SHP via `sit.egov.ba.it` | EPSG:32633 | ✅ **Downloaded** (Phase 0). The server doesn't send its intermediate TLS certificate, which is why phones worked and scripts didn't. Fixed with `config/certs/intermediates.pem`, verification kept on. **17 quartieri** (16 match the population `RIONE` values + Torre a Mare), **58,495 civic points**. A simple address join places **91.8% of residents**. |
 | D9 | **Circoscrizioni** (2013) | ZIP on opendata.comune.bari.it (direct link found) | n/a | 🔍 Not inspected yet (fallback boundaries) |
 | D10 | **E-PRTR / EEA Industrial Emissions** | External, has coordinates + pollutant releases | EPSG:4326 | 🔍 Not inspected yet. Candidate replacement for D7. |
+| D11 | **Sentinel-2 L2A** (Copernicus), via Microsoft Planetary Computer (no account) | Median NDVI of the 19 clear scenes of Jun–Aug 2025 (tile 33TXF), cached as one GeoTIFF by `pipeline download` | EPSG:32633, 10 m | ✅ **Used since Q49** for the green-deficit indicator and the tree estimate. D1 stays as a context layer. |
 
 ### 3.1 Consequences
 1. **Industrial pressure**: AIA (D7) can't be placed on a map. Options: E-PRTR (D10), manual geocoding of the few Bari AIA sites, or dropping the indicator from the MVP → **question Q5**.
@@ -285,15 +286,21 @@ No timeline is set. Coding starts once this planning session is closed. The phas
 3.6 Ranking table (switches to a card list on phones), methodology & sources modal (includes the sensitivity summary), disclaimers.
 **Done when**: the full flow *map → zone → IPF → reasons → robustness → suggested intervention* works end to end on real data, at phone, tablet and desktop widths.
 
+**Status (2026-09-29): done.** Q45–Q48 were raised and decided during this phase. Review and handoff: `docs/handoff/phase_3.md`.
+- The app is in `frontend/src/` (React + TS + Vite, MapLibre via react-map-gl, Tailwind v4, Headless UI). It covers the map with indicator tabs, the quartieri/250 m/500 m switch, context layers, the legend with class counts, the detail card with explanation and robustness, the simulator, the weights with "Verifica robustezza", the sortable ranking with CSV export, the methodology modal, and light and dark themes.
+- Checked in headless Chrome at 360×740, 390×844, 820×1180, 1366×768 and 1440×900: no horizontal scroll and no console errors. The full flow works on real data, and the numbers match the API (at the end of Phase 3, before Q49: Libertà 86,3 → 85,1 with 601 trees).
+- **Q49–Q50** (after the Phase 3 review, closing Q33): the green indicator and the trees use Sentinel-2 vegetation, and non-residential cells' trees are reported apart. See `docs/handoff/phase_3.md` A.6.
+- The production build served by the backend on :8000 is ready (map + legend) in about 1.7 s locally. The ngrok and real-phone checks are Phase 4 (NFR-10).
+
 ### Phase 4: Demo readiness
-4.1 Production build, single `make demo` / script (build frontend → run uvicorn → start ngrok).
+4.1 Production build, single `make demo` / script (build frontend → run uvicorn on port 8080 → start ngrok with `ngrok http 8080 --url https://green-planner.ngrok.io`).
 4.2 Test via ngrok from a phone/another network. Check the load time. Run the device checks of NFR-10 (dev-tools emulation + at least one real phone, portrait and landscape).
 4.3 Demo script: 2–3 zones to show, with a compelling narrative (e.g. a high-priority zone with its top drivers vs a low one).
 4.4 README (English) + slide material if needed.
 **Done when**: the full demo runs from a clean start in under 2 minutes with no network dependency except ngrok + basemap tiles.
 
 ### Phase 5 (stretch, only if time allows)
-Weight presets ("salute", "clima", "equità"), CSV export, Sentinel-2 NDVI in place of/in addition to D1, bus stops (GTFS), Copertino/Lecce proof of transferability.
+Weight presets ("salute", "clima", "equità"), CSV export, ~~Sentinel-2 NDVI~~ (done in Q49), bus stops (GTFS), Copertino/Lecce proof of transferability.
 
 ### 8.1 Team split (for when the team joins; for now a single developer, see Q15)
 - **Data/GIS**: Phases 0–1.
@@ -362,7 +369,7 @@ The user accepted **all recommendations** below. The detailed questions are kept
 | Q30 | Custom weights with a **non-zero weight for an inactive indicator** (`industry`) are **rejected** (HTTP 400). A weight of 0 is accepted and ignored. (Phase 2) |
 | Q31 | Custom weights may be **0 to 100** per indicator. A **0 weight stays 0** in every sensitivity run: only the non-zero weights are perturbed, and the ±5 pp spread is calibrated on them. If there is nothing to perturb (a single non-zero indicator, or weights too concentrated for ±5 pp), the ranking is still returned and sensitivity is marked **not applicable**. The default results are unchanged. (Phase 2) |
 | Q32 | API tests run on a **synthetic fixture** (tiny artefacts written to a temp dir), plus a smoke test on the real `data/processed/` that is skipped when it isn't built. (Phase 2) |
-| Q33 | The open model issues from Phase 1 (green-deficit saturation, artificial-only cells) are **discussed later, before the demo**, not before Phase 2. (Phase 2) |
+| Q33 | The open model issues from Phase 1 (green-deficit saturation, artificial-only cells) are **discussed later, before the demo**, not before Phase 2. (Phase 2) **Resolved by Q49 and Q50.** |
 | Q34 | The UI prototype shows **5 classes** (fixed thresholds 20/40/60/80). **Kept 4 quartile classes** (Q11): with fixed thresholds all 16 quartieri (IPF 63–95) would fall into the top two classes. The UI uses 4 shades of the prototype's palette. (Phase 3.0) |
 | Q35 | **Industry in the UI: context layer only.** No industry slider or score bar (the prototype has both). The prototype's *AIA* tab shows the industrial facilities layer (proximity, never causality). (Phase 3.0) |
 | Q36 | Custom weights are **normalised on their total** (as in the prototype, "il calcolo li normalizza sul totale"): each 0–100, total > 0. Replaces the sum-to-100 rule of FR-23. (Phase 3.0) |
@@ -371,9 +378,15 @@ The user accepted **all recommendations** below. The detailed questions are kept
 | Q39 | **Light + dark theme**, following the device setting, with a toggle. All controls, dropdowns included, styled consistently for both themes (NFR-11). (Phase 3.0) |
 | Q40 | The prototype's **citizen view** (*vista cittadino*) is **ignored for now**; to be added only once the demo works end to end (§1.4). (Phase 3.0) |
 | Q41 | UI placeholder name: **"Urban Green Planner"** (the working title, as in the prototype) until the team picks the final name (Q14 still open). (Phase 3.0) |
-| Q42 | **Zone card green target**: cells keep "verde attuale → 15%"; zones show the mean public green share and the **number of analysed cells below 15%** (e.g. Libertà 20.9%, 14 of 29 cells), because a zone's mean can exceed 15% while many of its cells are below it (the deficit is summed per cell). Served as `trees.cells_below_target` in the zone detail. (Phase 3.0) |
+| Q42 | **Zone card green target**: cells keep "verde attuale → 15%"; zones show the mean public green share and the **number of analysed cells below 15%** (since Q49–Q50: mean vegetation share and residential cells below 15%, e.g. Libertà 3.0%, 25 of 27) (e.g. Libertà 20.9%, 14 of 29 cells), because a zone's mean can exceed 15% while many of its cells are below it (the deficit is summed per cell). Served as `trees.cells_below_target` in the zone detail. (Phase 3.0) |
 | Q43 | The **plantable fraction (25%) and crown area (30 m²) are not editable** in the app: shown read-only in the methodology modal; the tree simulator (Q37) covers the "what if" use. (Phase 3.0) |
 | Q44 | The **simulator opens from the selected zone/cell card** ("Simula intervento"), pre-filled with that selection: a panel next to the map on desktop, a step of the bottom sheet on phones. No separate screen with its own zone picker. (Phase 3.0) |
+| Q45 | The industry map tab is labelled **"Industria"**, not the prototype's "AIA": the layer is E-PRTR data, not AIA permits (methodology §5.5). Its legend says facilities within 10 km, context only, proximity not causality. (Phase 3) |
+| Q46 | Class colours: the **darkest 4** shades of the prototype palette, `#FAC775 #F0997B #D85A30 #993C1D` (bassa → alta). The palest (`#FAEEDA`) nearly disappears on a light basemap; it is only the 0 end of the indicator-tab ramp. (Phase 3) |
+| Q47 | Fonts are **bundled** with the app (npm `@fontsource`: Inter, Source Serif 4, IBM Plex Mono), so the UI needs no font CDN (Phase 4: no network dependency except ngrok and basemap tiles). (Phase 3) |
+| Q48 | Both Could items are in Phase 3: **FR-48** Comune/year selectors (only Bari / latest data enabled, the others "prossimamente") and **FR-49** CSV export of the ranking. (Phase 3) |
+| Q49 | **Green deficit from satellite vegetation** (closes Q33, issue 1: with the Comune's public green, 49% of analysed cells had deficit 100). Sentinel-2 L2A (D11), **median NDVI of the clear summer scenes (Jun–Aug 2025)**, a 10 m pixel is vegetated when **NDVI ≥ 0.30**. `veg_share` replaces `green_share` as the indicator, and the **tree estimate uses the same measure** (target 15%). The public green areas stay as a context layer and a descriptive value. Evidence: summer ≥ 0.30 leaves 117 cells (10%) without vegetation; ≥ 0.40 would leave 33%; the year's greenest value makes the farmland fringe look green. Public green and satellite vegetation are uncorrelated (Spearman 0.00): e.g. tree-lined-street polygons have NDVI 0.11. Trees: 45,278 (was 54,855). (Phase 3) |
+| Q50 | **Non-residential cells** (closes Q33, issue 2): analysed cells with **0 residents** (rounded count; 302 at 250 m) keep their class and card ("area non residenziale"), but **zone and ranking tree totals count residential cells only**, with the rest shown apart ("+ N in aree non residenziali": 12,345 of 45,278 trees), and the **zone simulator spreads trees over residential cells only**. (Phase 3) |
 
 ### 10.1 Detailed questions (rationale)
 

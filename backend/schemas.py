@@ -42,10 +42,13 @@ class Driver(BaseModel):
 class Trees(BaseModel):
     green_deficit_m2: float | None
     plantable_m2: float | None
-    trees_new: int | None  # model estimate (plantable share of the deficit)
+    trees_new: (
+        int | None
+    )  # model estimate (plantable share of the deficit); zones: residential cells
+    trees_new_nonres: int | None  # zones only: estimate in non-residential cells (Q50)
     target_green_share: float  # e.g. 0.15
     trees_for_target: int | None  # trees whose crowns would close the whole deficit
-    cells_below_target: int | None  # zones only: analysed cells below the target share
+    cells_below_target: int | None  # zones only: residential cells below the target share
 
 
 class ItemSensitivity(BaseModel):
@@ -92,7 +95,9 @@ class RankingItem(BaseModel):
     rank_p95: int | None
     top_n_freq: float | None
     robust: bool | None
-    trees_new: int | None
+    trees_new: int | None  # zones: residential cells only (Q50)
+    trees_new_nonres: int | None  # zones only
+    residential: bool | None  # cells only
     residents: float | None
     contributions: dict[str, float]  # weight × score per active indicator (sums to ipf)
 
@@ -124,8 +129,8 @@ class Sensitivity(Weights):
 
 
 class SimulationState(BaseModel):
-    green_m2: float
-    green_share: float
+    veg_m2: float  # satellite vegetation (Q49)
+    veg_share: float
     score_green_deficit: float
     ipf: float
     ipf_class: int
@@ -140,7 +145,7 @@ class Simulation(Weights):
     id: str
     grid: int | None
     trees: int
-    added_green_m2: float  # trees × crown area
+    added_veg_m2: float  # trees × crown area
     crown_area_m2: float
     target_green_share: float
     trees_estimate: int | None  # the model's estimate (trees_new)

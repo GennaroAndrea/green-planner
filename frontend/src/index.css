@@ -1,7 +1,183 @@
 @import "tailwindcss";
 
+/* Dark mode follows the `dark` class on <html> (set from the device setting or the header toggle). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Theme tokens (NFR-11). Same roles as the prototype's CSS variables (surface, text, border),
+ * defined for both themes. Tailwind utilities read them through @theme below.
+ */
+:root {
+  color-scheme: light;
+  --surface-0: #f3f1ec;
+  --surface-1: #fbfaf7;
+  --surface-2: #efece5;
+  --surface-3: #e4e0d6;
+  --border: #dcd7cc;
+  --border-strong: #b9b2a3;
+  --text-primary: #25221d;
+  --text-secondary: #5d574c;
+  --text-muted: #8a8374;
+  --accent: #993c1d;
+  --accent-soft: #fae7dc;
+  --ok: #3b6d11;
+  --ok-soft: #e6f0d8;
+  --warn: #8a5a00;
+  --warn-soft: #fbefd2;
+  --focus: #b4552f;
+  --no-data: #cfcac0;
+}
+
+.dark {
+  color-scheme: dark;
+  --surface-0: #141311;
+  --surface-1: #1e1c19;
+  --surface-2: #282622;
+  --surface-3: #34312c;
+  --border: #3a3732;
+  --border-strong: #58534a;
+  --text-primary: #eeebe4;
+  --text-secondary: #b7b1a5;
+  --text-muted: #857f73;
+  --accent: #f0997b;
+  --accent-soft: #3d2419;
+  --ok: #97c459;
+  --ok-soft: #22301a;
+  --warn: #f2c066;
+  --warn-soft: #36290f;
+  --focus: #f0997b;
+  --no-data: #4a4640;
+}
+
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Source Serif 4 Variable", Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --color-surface-0: var(--surface-0);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-ink: var(--text-primary);
+  --color-ink-2: var(--text-secondary);
+  --color-ink-3: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+}
+
 html,
 body,
 #root {
   height: 100%;
+}
+
+body {
+  background: var(--surface-0);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Range sliders styled for both themes (NFR-11): the native look ignores the theme. */
+input[type="range"].range {
+  appearance: none;
+  background: transparent;
+  height: 44px; /* touch target (NFR-09) */
+  cursor: pointer;
+  --fill: var(--text-primary);
+}
+input[type="range"].range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-3);
+}
+input[type="range"].range::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-3);
+}
+input[type="range"].range::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--fill);
+}
+input[type="range"].range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -8px;
+  border-radius: 50%;
+  background: var(--fill);
+  border: 3px solid var(--surface-1);
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+input[type="range"].range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--fill);
+  border: 3px solid var(--surface-1);
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+
+/* Horizontal scrollers without a visible scrollbar (map tabs on phones). */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* MapLibre controls and popups follow the theme. */
+.maplibregl-ctrl-group {
+  background: var(--surface-1) !important;
+  border: 1px solid var(--border);
+  box-shadow: none !important;
+}
+.maplibregl-ctrl-group button + button {
+  border-top-color: var(--border) !important;
+}
+.dark .maplibregl-ctrl-icon {
+  filter: invert(1);
+}
+.maplibregl-ctrl-attrib {
+  background: color-mix(in srgb, var(--surface-1) 80%, transparent) !important;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--text-secondary) !important;
+}
+.dark .maplibregl-ctrl-attrib-button {
+  filter: invert(1);
+}
+.maplibregl-popup-content {
+  background: var(--surface-1) !important;
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px !important;
+  padding: 10px 12px !important;
+  font-family: var(--font-sans);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.15) !important;
+}
+.maplibregl-popup-tip {
+  display: none;
+}
+.maplibregl-popup-close-button {
+  width: 32px;
+  height: 32px;
+  font-size: 18px;
+  color: var(--text-secondary);
 }

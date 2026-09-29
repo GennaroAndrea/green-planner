@@ -79,6 +79,17 @@ sources:
       - url: https://sdi.eea.europa.eu/datashare/public.php/dav/files/sptXqwkQr5g7Bp5/eea_t_ied-eprtr_p_2007-2024_v16_r00/User%20friendly%20.csv%20files.zip
         filename: eprtr_csv_v16.zip
 
+  sentinel2_ndvi:  # Q49: Copernicus Sentinel-2 L2A (10 m), median NDVI of the clear summer scenes
+    type: stac_ndvi_composite
+    stac_api: https://planetarycomputer.microsoft.com/api/stac/v1
+    sas_token_url: https://planetarycomputer.microsoft.com/api/sas/v1/token/sentinel-2-l2a
+    collection: sentinel-2-l2a
+    mgrs_tile: 33TXF  # the whole municipality lies in this tile
+    datetime: 2025-06-01/2025-08-31
+    max_cloud_cover: 1  # % over the tile
+    bbox: [16.70, 40.98, 17.05, 41.20]  # WGS84, around the municipal boundary
+    filename: ndvi_median_2025_summer.tif
+
 # ---------------------------------------------------------------------------
 # Model parameters
 # ---------------------------------------------------------------------------
@@ -167,7 +178,10 @@ classes:  # Q11
   count: 4
   method: quantile
 
-trees:  # Q12
+vegetation:  # Q49: a 10 m pixel is vegetated when its summer median NDVI is at least this
+  ndvi_threshold: 0.30
+
+trees:  # Q12; since Q49 the green share is the satellite vegetation share
   target_green_share: 0.15
   plantable_fraction: 0.25
   crown_area_m2: 30

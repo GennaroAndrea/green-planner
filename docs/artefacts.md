@@ -2,12 +2,14 @@
 
 `uv run python -m pipeline build` writes everything below into `data/processed/` from `data/raw/` (+ `data/manual/`). All spatial outputs are in **EPSG:4326**. Computation happens in EPSG:32633, so areas and distances are metric.
 
+The satellite input is `data/raw/sentinel2_ndvi/ndvi_median_2025_summer.tif`: the median NDVI × 10,000 (int16, nodata −32768, EPSG:32633, 10 m pixels), built by `pipeline download` from the Sentinel-2 scenes listed in the manifest (Q49).
+
 | File | Content |
 |---|---|
 | `cells_250.parquet` / `.geojson` | 250 m grid (default view) |
 | `cells_500.parquet` / `.geojson` | 500 m grid |
 | `zones.parquet` / `.geojson` | 17 quartieri (SIT), aggregated from the 250 m grid |
-| `layer_green_areas.geojson` | public green areas (D1), simplified to 1 m |
+| `layer_green_areas.geojson` | public green areas (D1), simplified to 1 m (context layer) |
 | `layer_traffic_controllers.geojson` | traffic controllers with mean daily vehicles |
 | `layer_air_stations.geojson` | the 5 ARPA stations in Bari with 2025 annual means |
 | `layer_industry.geojson` | E-PRTR facilities within 10 km (context only, see `metadata.inputs.industry`) |
@@ -22,7 +24,7 @@ Indicator keys (stable, also used as i18n keys): `pollution`, `green_deficit`, `
 | Key | Raw column | Raw unit | Normalisation (p5–p95 over analysed cells) |
 |---|---|---|---|
 | `pollution` | `pollution_ratio` | mean of annual mean / EU 2030 limit over NO₂, PM10, PM2.5 (IDW, power 2) | linear |
-| `green_deficit` | `green_share` | share of cell area covered by public green (0–1) | linear, then `100 − score` |
+| `green_deficit` | `veg_share` | share of cell area covered by satellite vegetation (0–1): 10 m Sentinel-2 pixels with summer-median NDVI ≥ 0.30 (Q49) | linear, then `100 − score` |
 | `traffic` | `traffic_index` | Σ controller mean daily vehicles × Gaussian(d, σ = 300 m), weights < 1% set to 0 (≈ 910 m) | log1p |
 | `population` | `density_km2` | residents per km² | log1p |
 
@@ -39,7 +41,10 @@ One row per grid cell, clipped to the municipal boundary. Slivers below 10% of a
 | `area_m2`, `area_share` | float | clipped area, and its share of a full cell |
 | `zone_id` | int | quartiere containing the cell centroid |
 | `zone_covered` | bool | the quartiere is covered by the population data (false: Torre a Mare) |
-| `green_m2`, `green_share` | float | public green area inside the cell |
+| `green_m2`, `green_share` | float | public green area inside the cell (Comune layer; descriptive only since Q49) |
+| `veg_m2`, `veg_share` | float | satellite vegetation: vegetated 10 m pixels whose centre is in the cell × 100 m² (capped at the cell area), and its share |
+| `veg_valid_share` | float | share of the cell's pixels with a valid NDVI in the composite |
+| `residential` | bool | the cell has residents (rounded count > 0). Non-residential cells stay analysed; their trees are reported apart in the zones (Q50) |
 | `artificial_share` | float | share of CORINE class 1 (Uso del Suolo 2011) |
 | `residents`, `vulnerable` | float | total residents (under67 + over67), vulnerable (under14 + over67), rounded |
 | `density_km2` | float | residents per km² |
@@ -49,7 +54,7 @@ One row per grid cell, clipped to the municipal boundary. Slivers below 10% of a
 | `ipf` | float | Σ wᵢ·scoreᵢ with the default effective weights. Null when not analysed. |
 | `contrib_<key>` | float | wᵢ·scoreᵢ in IPF points (sums to `ipf`) |
 | `ipf_class` | int | 1..4 = bassa / media / medio-alta / alta (quartiles of analysed cells). 0 = not analysed. |
-| `green_deficit_m2`, `plantable_m2`, `trees_new` | float/int | tree estimate (§6.5). Null when not analysed. |
+| `green_deficit_m2`, `plantable_m2`, `trees_new` | float/int | tree estimate (methodology §10), on the vegetation share. Null when not analysed. |
 | `rank` | int | 1 = highest IPF among analysed cells |
 | `rank_p5`, `rank_p95` | int | 5th–95th percentile rank over the 1,000 weight perturbations |
 | `top_n_freq` | float | share of runs in the top 10% of cells |
@@ -66,11 +71,14 @@ One row per quartiere (17). Zone values are aggregates of the **analysed cells o
 | `covered`, `analysed` | covered by the population data / has analysed cells (Torre a Mare: both false, all values null) |
 | `cells_analysed`, `analysed_area_m2` | number and area of analysed cells |
 | `residents`, `vulnerable`, `density_km2` | sums over analysed cells, and density over their area |
-| `green_m2`, `green_share` | public green in analysed cells |
+| `green_m2`, `green_share` | public green in analysed cells (descriptive) |
+| `veg_m2`, `veg_share` | satellite vegetation in analysed cells |
+| `cells_residential` | analysed cells with residents |
 | `pollution_ratio`, `traffic_index` | population-weighted means of the raw values |
 | `score_<key>`, `ipf`, `contrib_<key>` | as for cells |
 | `ipf_class` | quartiles over the 16 analysed zones |
-| `green_deficit_m2`, `plantable_m2`, `trees_new` | sums over analysed cells |
+| `green_deficit_m2`, `plantable_m2`, `trees_new` | sums over the **residential** analysed cells (Q50) |
+| `trees_new_nonres` | trees estimated in the non-residential analysed cells, reported apart |
 | `rank`, `rank_p5`, `rank_p95`, `top_n_freq`, `class_stability`, `robust` | as for cells, with top N = 10 zones |
 
 ## Layers
@@ -87,11 +95,11 @@ One row per quartiere (17). Zone values are aggregates of the **analysed cells o
 | `schema_version`, `city`, `built_at` | |
 | `indicators` | `all`, `active`, `dropped` (key → reason), `raw_column` |
 | `weights` | `configured_pp` (config, percentage points), `effective` (active, sum 1) |
-| `classes`, `trees`, `urban_mask`, `normalisation`, `grid` | parameters from the config |
+| `classes`, `trees`, `vegetation`, `urban_mask`, `normalisation`, `grid` | parameters from the config |
 | `grids.<size>` | `cells`, `cells_analysed`, `normalisation` bounds, `class_edges`, `sensitivity` summary |
 | `zones` | `zones_analysed`, `class_edges`, `sensitivity` summary |
 | `…sensitivity` summary | `n`, `top_n`, `spearman_mean`, `spearman_p5`, `top_n_overlap_mean`/`_min`, `robust_share`, `robust_share_top_n`, `one_at_a_time` (list: `indicator`, `delta_pp`, `weight`, `top_n_kept`, `spearman`) |
 | `sensitivity` | run parameters + `dirichlet_alpha0` |
-| `inputs` | `population` (address match stats), `traffic` (months used, controllers), `air`, `industry` |
+| `inputs` | `population` (address match stats), `traffic` (months used, controllers), `air`, `industry`, `vegetation` (period, scene dates, NDVI threshold, valid pixel share, cells without vegetation, non-residential cells) |
 | `sources` | per raw source: status, number of files, latest download time, URLs (from the manifest) |
-| `disclaimers` | keys for the UI (texts live in the frontend): `relative_priority`, `model_estimate`, `arpa_validation`, `no_causality`, `public_green_only`, `population_coverage` |
+| `disclaimers` | keys for the UI (texts live in the frontend): `relative_priority`, `model_estimate`, `arpa_validation`, `no_causality`, `satellite_vegetation`, `population_coverage` |
