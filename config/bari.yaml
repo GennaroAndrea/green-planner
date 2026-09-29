@@ -1,0 +1,144 @@
+# City configuration for Bari.
+# Parameter values follow the decision log in docs/requirements_and_plan.md §10.0.
+
+city: bari
+
+crs:
+  compute: EPSG:32633  # WGS84 / UTM 33N, metric: areas, distances, grid
+  web: EPSG:4326       # output for the frontend
+
+ckan_api: https://dati.puglia.it/ckan/api/3/action
+
+# Extra intermediate certificates for hosts that don't send their full chain
+# (sit.egov.ba.it, www.arpa.puglia.it). Verification stays enabled.
+extra_ca_file: config/certs/intermediates.pem
+
+# ---------------------------------------------------------------------------
+# Data sources (downloaded by `python -m pipeline download` into data/raw/<key>/)
+#   type ckan : resolve all resources of a dati.puglia.it dataset (optionally filtered)
+#   type url  : explicit list of files
+#   optional  : failure doesn't fail the whole download
+# ---------------------------------------------------------------------------
+sources:
+  green_areas:  # D1
+    type: ckan
+    dataset: aree-verdi
+
+  traffic_flows:  # D2, one CSV per month
+    type: ckan
+    dataset: centraline-semaforiche-flussi-di-traffico-giornalieri
+
+  traffic_controllers:  # D3, one JSON per month
+    type: ckan
+    dataset: centraline-semaforiche-posizionamento-e-sensoristica-a-bordo
+
+  air_stations:  # D5
+    type: url
+    files:
+      - url: http://old.arpa.puglia.it/ARPA_ARIA/centraline.jsp
+        filename: stations.geojson
+
+  air_daily_api:  # D4, previous day only; fallback source for the annual means
+    type: url
+    optional: true
+    dated: true  # filename gets today's date, so repeated runs build a history
+    files:
+      - url: https://cloud.arpa.puglia.it/QualitaAria?format=GeoJSON
+        filename: qualita_aria.geojson
+
+  population:  # D6, cumulative age bands: under14 ⊂ under18 ⊂ under67; over67 separate
+    type: ckan
+    dataset: popolazione-residente1
+
+  sit:  # D8, SIT Comune di Bari ("civilario unico")
+    type: url
+    files:
+      - url: https://sit.egov.ba.it/vector/api/shp/qdjango/384/vwm_db_grafo_civico20210224101146733/
+        filename: civici.zip
+      - url: https://sit.egov.ba.it/vector/api/shp/qdjango/384/quartieri20200616115305907/
+        filename: quartieri.zip
+      - url: https://sit.egov.ba.it/vector/api/shp/qdjango/384/municipi20200616115312092/
+        filename: municipi.zip
+      - url: https://sit.egov.ba.it/vector/api/shp/qdjango/384/Confine_Comunale_Bari20200227151955299/
+        filename: confine_comunale.zip
+
+  circoscrizioni_2013:  # D9, fallback neighbourhood boundaries
+    type: url
+    files:
+      - url: https://opendata.comune.bari.it/dataset/82532fb7-2d49-452f-aefe-1552c0c4d2c7/resource/77b9fa9b-71a7-4c11-8d62-49d29bfc2990/download/20130222t140509circoscrizioni.zip
+        filename: circoscrizioni.zip
+
+  land_use_2011:  # Uso del Suolo 2011, only artificial surfaces + legend (urban mask)
+    type: ckan
+    dataset: uso-del-suolo-2011-uds
+    name_pattern: "Superfici Artificiali|Legenda"
+
+  eprtr:  # D10, EEA Industrial Reporting v16 (2007-2024), user-friendly CSV bundle (~148 MB)
+    type: url
+    files:
+      - url: https://sdi.eea.europa.eu/datashare/public.php/dav/files/sptXqwkQr5g7Bp5/eea_t_ied-eprtr_p_2007-2024_v16_r00/User%20friendly%20.csv%20files.zip
+        filename: eprtr_csv_v16.zip
+
+# ---------------------------------------------------------------------------
+# Model parameters
+# ---------------------------------------------------------------------------
+grid:
+  cell_sizes_m: [250, 500]  # Q7
+  default_cell_size_m: 250
+
+urban_mask:  # Q6
+  min_residents: 50
+  min_artificial_share: 0.30
+
+population:  # Q4
+  exclude_uncovered_zones: true
+
+traffic:  # Q8
+  aggregate_detectors: sum
+  exclude_months: ["2025-08"]
+  zero_is_missing: true
+  kernel_sigma_m: 300
+
+air:  # Q3, Q19
+  pollutants: [NO2, PM10, PM2.5]
+  annual_means_file: data/manual/arpa_annual_2025.csv
+  limit_values_ugm3:  # EU Directive 2024/2881, annual limits applicable from 2030
+    NO2: 20
+    PM10: 20
+    PM2.5: 10
+
+industry:  # Q5, Q18
+  radius_km: 10
+  min_facilities: 3
+  recent_years: 5  # only facilities reporting in the last N reporting years count
+  pollutants: [NOX, PM10]
+
+normalisation:  # Q9
+  method: robust_minmax
+  lower_percentile: 5
+  upper_percentile: 95
+  log_transform: [traffic, population]
+
+weights:  # Q10, percentage points; redistributed proportionally if an indicator is dropped
+  pollution: 20
+  green_deficit: 30
+  traffic: 20
+  population: 20
+  industry: 10
+
+classes:  # Q11
+  count: 4
+  method: quantile
+
+trees:  # Q12
+  target_green_share: 0.15
+  plantable_fraction: 0.25
+  crown_area_m2: 30
+
+sensitivity:  # Q17
+  runs: 1000
+  spread_pp: 5
+  top_n_zones: 10
+  top_share_cells: 0.10
+  robust_threshold: 0.80
+  one_at_a_time_delta_pp: 10

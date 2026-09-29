@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Node / frontend
+node_modules/
+frontend/dist/
+
+# Data: raw downloads and intermediate files are reproducible via `python -m pipeline download`
+data/raw/*
+!data/raw/manifest.json
+data/interim/*
+data/processed/*
+!data/**/.gitkeep
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store

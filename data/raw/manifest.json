@@ -1,0 +1,325 @@
+{
+  "sources": {
+    "green_areas": {
+      "status": "ok",
+      "files": [
+        {
+          "url": "https://opendata.comune.bari.it/dataset/16d4a848-0b1c-4451-9c08-c4cb3bbe2bda/resource/4f25ee7e-1c81-401e-aa2d-e86ec89bf904/download/aree-verdi.csv",
+          "path": "green_areas/aree-verdi.csv",
+          "bytes": 80191,
+          "sha256": "7970ed1caeeb764e86acfaac0fd9bd8a1501006cb3789cf47e0573fbc0b45b4a",
+          "downloaded_at": "2026-09-29T17:12:21.170592+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/16d4a848-0b1c-4451-9c08-c4cb3bbe2bda/resource/ccae6ba8-6e9a-4548-b65b-5589de40f8ff/download/aree-verdi-2.zip",
+          "path": "green_areas/aree-verdi-2.zip",
+          "bytes": 598562,
+          "sha256": "238002b24e38c2648f482489a4f480c145c935bd5f3b21cd79160cc3dadc27f4",
+          "downloaded_at": "2026-09-29T17:12:21.681592+00:00"
+        }
+      ],
+      "errors": []
+    },
+    "traffic_flows": {
+      "status": "ok",
+      "files": [
+        {
+          "url": "https://opendata.comune.bari.it/dataset/2199ef8c-d5bc-41a3-bee0-d0b3a413717d/resource/00ee43c5-bade-44db-a8f1-8a439a504414/download/vehiclesdaily_202606.csv",
+          "path": "traffic_flows/vehiclesdaily_202606.csv",
+          "bytes": 62942,
+          "sha256": "152d860556a63fb54043c45be447d5b20fa397560b2a6852a068eb3c394acf4f",
+          "downloaded_at": "2026-09-29T17:12:22.304593+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/2199ef8c-d5bc-41a3-bee0-d0b3a413717d/resource/17ddafc2-ced4-48d1-993c-9b4a0340eb50/download/vehiclesdaily_202512.csv",
+          "path": "traffic_flows/vehiclesdaily_202512.csv",
+          "bytes": 66717,
+          "sha256": "68175775974556060f569763733e633de0c652339c725952e7b618471623cf4c",
+          "downloaded_at": "2026-09-29T17:12:22.660593+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/2199ef8c-d5bc-41a3-bee0-d0b3a413717d/resource/2b039bd7-064b-4728-bccd-2a81150c02f4/download/vehiclesdaily_202602.csv",
+          "path": "traffic_flows/vehiclesdaily_202602.csv",
+          "bytes": 62650,
+          "sha256": "1cbaa9e0ed6b3df1d6a52584f96ed3073d5740334d143e464a6f5ae3f3cd0e35",
+          "downloaded_at": "2026-09-29T17:12:23.038593+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/2199ef8c-d5bc-41a3-bee0-d0b3a413717d/resource/5d11e225-fe70-41bb-94d0-559cf8631a34/download/vehiclesdaily_202511.csv",
+          "path": "traffic_flows/vehiclesdaily_202511.csv",
+          "bytes": 69461,
+          "sha256": "c8d373cdf0ca3ea5d7b9cc3191e632e9a3776b93c9740d0c8b1322ef9176150c",
+          "downloaded_at": "2026-09-29T17:12:23.414593+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/2199ef8c-d5bc-41a3-bee0-d0b3a413717d/resource/7de817f7-d8d8-4708-a593-b0cf7183d6ea/download/vehiclesdaily_202510.csv",
+          "path": "traffic_flows/vehiclesdaily_202510.csv",
+          "bytes": 72095,
+          "sha256": "e7c13f5e0ac50de9b2a12fedb900ad1f44897dd3891c1fb03f66b190ef1cf5b0",
+          "downloaded_at": "2026-09-29T17:12:23.870593+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/2199ef8c-d5bc-41a3-bee0-d0b3a413717d/resource/95941880-59ec-4e87-83f3-df1ea66044b6/download/vehiclesdaily_202605.csv",
+          "path": "traffic_flows/vehiclesdaily_202605.csv",
+          "bytes": 64845,
+          "sha256": "23be4b70fc287189dd556edec77763642278f6dbb1dd4f05de0969b5b33d50e4",
+          "downloaded_at": "2026-09-29T17:12:24.200593+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/2199ef8c-d5bc-41a3-bee0-d0b3a413717d/resource/a9eae47e-544b-48e4-8fad-c87289cfc371/download/vehiclesdaily_202604.csv",
+          "path": "traffic_flows/vehiclesdaily_202604.csv",
+          "bytes": 70018,
+          "sha256": "9cd9fcabdb89a3d1ef89d06abb0930c8cc012ac40e8da1ad8ff20c8887253d23",
+          "downloaded_at": "2026-09-29T17:12:24.519593+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/2199ef8c-d5bc-41a3-bee0-d0b3a413717d/resource/b84ccc5e-d1c0-4eac-a173-1224ab38f948/download/vehiclesdaily_202603.csv",
+          "path": "traffic_flows/vehiclesdaily_202603.csv",
+          "bytes": 72239,
+          "sha256": "fdf6296f76e436615aa0d3a94fcf7f1d703ee30cee9862cc04e4c9625623cea2",
+          "downloaded_at": "2026-09-29T17:12:24.873593+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/2199ef8c-d5bc-41a3-bee0-d0b3a413717d/resource/d0d888a6-9fc9-451c-91eb-0ab51ee0a770/download/vehiclesdaily_202508.csv",
+          "path": "traffic_flows/vehiclesdaily_202508.csv",
+          "bytes": 70331,
+          "sha256": "f21d90a54c105c9b1fcaeff5a6c7320090b60436a9195f8a60b646926183456f",
+          "downloaded_at": "2026-09-29T17:12:25.258593+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/2199ef8c-d5bc-41a3-bee0-d0b3a413717d/resource/e15381b0-023f-4496-92a5-81744ea70acd/download/vehiclesdaily_202509.csv",
+          "path": "traffic_flows/vehiclesdaily_202509.csv",
+          "bytes": 70605,
+          "sha256": "32471569364c03fbf61fba4f11c32585d8b5847c8af5fc714bb7f925d25a647d",
+          "downloaded_at": "2026-09-29T17:12:25.628593+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/2199ef8c-d5bc-41a3-bee0-d0b3a413717d/resource/fe535b00-c854-4fe2-b788-b10a5aa1fd8e/download/vehiclesdaily_202601.csv",
+          "path": "traffic_flows/vehiclesdaily_202601.csv",
+          "bytes": 71619,
+          "sha256": "b05fd8121b98e8dc87d4ebde896bb85f8f215bff20feeba0a1d893bc34529cbf",
+          "downloaded_at": "2026-09-29T17:12:25.974593+00:00"
+        }
+      ],
+      "errors": []
+    },
+    "traffic_controllers": {
+      "status": "ok",
+      "files": [
+        {
+          "url": "https://opendata.comune.bari.it/dataset/dce6ce30-5822-4afa-a44f-74b8de7304b0/resource/0b53ada1-b60c-4bdb-8415-adfd68ded388/download/centraline_semaforiche_202508.json",
+          "path": "traffic_controllers/centraline_semaforiche_202508.json",
+          "bytes": 95983,
+          "sha256": "0ea32fe503952022ed86313f5225e4432c5633cf09441ea93a1e23430d95591b",
+          "downloaded_at": "2026-09-29T17:12:26.583594+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/dce6ce30-5822-4afa-a44f-74b8de7304b0/resource/1f7f0366-0d19-473c-b890-963e40d18fe5/download/centraline_semaforiche_202602.json",
+          "path": "traffic_controllers/centraline_semaforiche_202602.json",
+          "bytes": 96700,
+          "sha256": "e704afca7bf4db3214c95463f5299a2a421a866d71bc4e472e81ebd78889c8ca",
+          "downloaded_at": "2026-09-29T17:12:26.977594+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/dce6ce30-5822-4afa-a44f-74b8de7304b0/resource/4b02bdf9-6f1e-4f38-8229-c73820d76fd1/download/centraline_semaforiche_202511.json",
+          "path": "traffic_controllers/centraline_semaforiche_202511.json",
+          "bytes": 96700,
+          "sha256": "e704afca7bf4db3214c95463f5299a2a421a866d71bc4e472e81ebd78889c8ca",
+          "downloaded_at": "2026-09-29T17:12:27.414594+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/dce6ce30-5822-4afa-a44f-74b8de7304b0/resource/553a0b0d-57d9-4705-8052-f700cda9fdff/download/centraline_semaforiche_202606.json",
+          "path": "traffic_controllers/centraline_semaforiche_202606.json",
+          "bytes": 99666,
+          "sha256": "e23d8b0b3dbd1d8f849c456148d3cdfca9921e3033057ce5c225c9d569b89051",
+          "downloaded_at": "2026-09-29T17:12:27.794594+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/dce6ce30-5822-4afa-a44f-74b8de7304b0/resource/63d9ef93-6307-46d4-aa77-e39017cad218/download/centraline_semaforiche_202512.json",
+          "path": "traffic_controllers/centraline_semaforiche_202512.json",
+          "bytes": 96700,
+          "sha256": "e704afca7bf4db3214c95463f5299a2a421a866d71bc4e472e81ebd78889c8ca",
+          "downloaded_at": "2026-09-29T17:12:28.167594+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/dce6ce30-5822-4afa-a44f-74b8de7304b0/resource/739ab3b1-0de6-4523-9948-9e6559cbc19d/download/centraline_semaforiche_202605.json",
+          "path": "traffic_controllers/centraline_semaforiche_202605.json",
+          "bytes": 99666,
+          "sha256": "e23d8b0b3dbd1d8f849c456148d3cdfca9921e3033057ce5c225c9d569b89051",
+          "downloaded_at": "2026-09-29T17:12:28.544594+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/dce6ce30-5822-4afa-a44f-74b8de7304b0/resource/8fd5c306-ccd3-4bae-a248-0cf6224cb9d5/download/centraline_semaforiche_202603.json",
+          "path": "traffic_controllers/centraline_semaforiche_202603.json",
+          "bytes": 99267,
+          "sha256": "fd792b79e9a714525e9f3b10a792ae57b61920e49597ffb77f885628430fa8f7",
+          "downloaded_at": "2026-09-29T17:12:28.996594+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/dce6ce30-5822-4afa-a44f-74b8de7304b0/resource/a2cbcfd6-735a-429f-b8c8-8c50e107a8f3/download/centraline_semaforiche_202604.json",
+          "path": "traffic_controllers/centraline_semaforiche_202604.json",
+          "bytes": 99267,
+          "sha256": "fd792b79e9a714525e9f3b10a792ae57b61920e49597ffb77f885628430fa8f7",
+          "downloaded_at": "2026-09-29T17:12:29.418594+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/dce6ce30-5822-4afa-a44f-74b8de7304b0/resource/d65ce557-e12f-4e61-ad75-71e8079ef7c7/download/centraline_semaforiche_202601.json",
+          "path": "traffic_controllers/centraline_semaforiche_202601.json",
+          "bytes": 96700,
+          "sha256": "e704afca7bf4db3214c95463f5299a2a421a866d71bc4e472e81ebd78889c8ca",
+          "downloaded_at": "2026-09-29T17:12:29.813594+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/dce6ce30-5822-4afa-a44f-74b8de7304b0/resource/d97b3972-06e1-4c11-9381-a25fb7949cea/download/centraline_semaforiche_202510.json",
+          "path": "traffic_controllers/centraline_semaforiche_202510.json",
+          "bytes": 96700,
+          "sha256": "e704afca7bf4db3214c95463f5299a2a421a866d71bc4e472e81ebd78889c8ca",
+          "downloaded_at": "2026-09-29T17:12:30.218594+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/dce6ce30-5822-4afa-a44f-74b8de7304b0/resource/feef09c7-e1e9-4b74-9690-8371ab63970f/download/centraline_semaforiche_202509.json",
+          "path": "traffic_controllers/centraline_semaforiche_202509.json",
+          "bytes": 95983,
+          "sha256": "0ea32fe503952022ed86313f5225e4432c5633cf09441ea93a1e23430d95591b",
+          "downloaded_at": "2026-09-29T17:12:30.506594+00:00"
+        }
+      ],
+      "errors": []
+    },
+    "air_stations": {
+      "status": "ok",
+      "files": [
+        {
+          "url": "http://old.arpa.puglia.it/ARPA_ARIA/centraline.jsp",
+          "path": "air_stations/stations.geojson",
+          "bytes": 6072727,
+          "sha256": "129de5dd058569303d631d203501fb87e1d8e6c60a3c54415425d9b68167cd9f",
+          "downloaded_at": "2026-09-29T17:13:00.588601+00:00"
+        }
+      ],
+      "errors": []
+    },
+    "air_daily_api": {
+      "status": "failed",
+      "files": [],
+      "errors": [
+        "https://cloud.arpa.puglia.it/QualitaAria?format=GeoJSON: timed out"
+      ]
+    },
+    "population": {
+      "status": "ok",
+      "files": [
+        {
+          "url": "https://opendata.comune.bari.it/dataset/5349df40-0d9e-4ca2-8104-d6e2f95d6267/resource/92657a6b-34a5-4813-b62c-75ab8de4a77c/download/under67.csv",
+          "path": "population/under67.csv",
+          "bytes": 762784,
+          "sha256": "0169ef0eb27ad33fe36b28a4efb6b1f3816701c2d2822fd9646981036b648d75",
+          "downloaded_at": "2026-09-29T17:13:31.790609+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/5349df40-0d9e-4ca2-8104-d6e2f95d6267/resource/b3d0f99c-2c8f-4d6b-8b52-f3b693bf1f21/download/under14.csv",
+          "path": "population/under14.csv",
+          "bytes": 400317,
+          "sha256": "0c7cd853d2a5413a2c8003716f6291ac61f9cde686b09ad12216a5b5a7b34d08",
+          "downloaded_at": "2026-09-29T17:13:32.190609+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/5349df40-0d9e-4ca2-8104-d6e2f95d6267/resource/ec489847-282e-46ff-a1b5-8ab297321cbc/download/over67.csv",
+          "path": "population/over67.csv",
+          "bytes": 581354,
+          "sha256": "aef442f90bf684ad010d88707d384246637ed8f03884bee2801c09d8bf05efc1",
+          "downloaded_at": "2026-09-29T17:13:32.583610+00:00"
+        },
+        {
+          "url": "https://opendata.comune.bari.it/dataset/5349df40-0d9e-4ca2-8104-d6e2f95d6267/resource/fc8d1aa0-77b8-472a-a6c4-0576f4cf9f69/download/under18.csv",
+          "path": "population/under18.csv",
+          "bytes": 458081,
+          "sha256": "6e9ac39a49b047a332c02e0833efa95b214e4e250a0c67ea8d9b602d4398b7c4",
+          "downloaded_at": "2026-09-29T17:13:32.955610+00:00"
+        }
+      ],
+      "errors": []
+    },
+    "sit": {
+      "status": "ok",
+      "files": [
+        {
+          "url": "https://sit.egov.ba.it/vector/api/shp/qdjango/384/vwm_db_grafo_civico20210224101146733/",
+          "path": "sit/civici.zip",
+          "bytes": 56215248,
+          "sha256": "25f3efa93b22b68f82b48ee19fdd1f498a0621095749b69339828cd37affb105",
+          "downloaded_at": "2026-09-29T17:13:50.469615+00:00"
+        },
+        {
+          "url": "https://sit.egov.ba.it/vector/api/shp/qdjango/384/quartieri20200616115305907/",
+          "path": "sit/quartieri.zip",
+          "bytes": 502158,
+          "sha256": "4b4c048212365afe7fc724ea6f0625c36cff2d192233fa71898940ec2553ab2b",
+          "downloaded_at": "2026-09-29T17:13:51.173615+00:00"
+        },
+        {
+          "url": "https://sit.egov.ba.it/vector/api/shp/qdjango/384/municipi20200616115312092/",
+          "path": "sit/municipi.zip",
+          "bytes": 442012,
+          "sha256": "463dee5b548c45b1d8b67ebc5f5ed4558ed483ea3eba745a2b15c3d4c0e4d6ce",
+          "downloaded_at": "2026-09-29T17:13:51.807615+00:00"
+        },
+        {
+          "url": "https://sit.egov.ba.it/vector/api/shp/qdjango/384/Confine_Comunale_Bari20200227151955299/",
+          "path": "sit/confine_comunale.zip",
+          "bytes": 525532,
+          "sha256": "bd8f91ae8e8e7556b84ab5f2477ba20da6686d201210b65f118c1d856fb77d80",
+          "downloaded_at": "2026-09-29T17:13:52.145615+00:00"
+        }
+      ],
+      "errors": []
+    },
+    "circoscrizioni_2013": {
+      "status": "ok",
+      "files": [
+        {
+          "url": "https://opendata.comune.bari.it/dataset/82532fb7-2d49-452f-aefe-1552c0c4d2c7/resource/77b9fa9b-71a7-4c11-8d62-49d29bfc2990/download/20130222t140509circoscrizioni.zip",
+          "path": "circoscrizioni_2013/circoscrizioni.zip",
+          "bytes": 58426,
+          "sha256": "025a1911bdf2cad99f1127a0f9225bd58a8bef8959471584880c986fc5d9d858",
+          "downloaded_at": "2026-09-29T17:13:52.638615+00:00"
+        }
+      ],
+      "errors": []
+    },
+    "land_use_2011": {
+      "status": "ok",
+      "files": [
+        {
+          "url": "https://dati.puglia.it/ckan/dataset/676e14b8-984b-41f9-8fed-057b23428f84/resource/3c37fa8b-5259-4503-a7ff-928dea7c268e/download/udssuperficiartificiali.zip",
+          "path": "land_use_2011/udssuperficiartificiali.zip",
+          "bytes": 77854371,
+          "sha256": "61620e126b254a25b150672de9fc53ca737a3aebb6bbe0fe4c1992e7cf10ede3",
+          "downloaded_at": "2026-09-29T17:16:23.215664+00:00"
+        },
+        {
+          "url": "https://dati.puglia.it/ckan/dataset/676e14b8-984b-41f9-8fed-057b23428f84/resource/aff8415f-cbce-4f25-b1f1-9bad9f3a6798/download/legendausodelsuolo.ods",
+          "path": "land_use_2011/legendausodelsuolo.ods",
+          "bytes": 4101,
+          "sha256": "8a4529f9637dddb57ceb85d5cd2be41ca821da9ac9010eebce1491c5273a5f80",
+          "downloaded_at": "2026-09-29T17:16:23.381664+00:00"
+        }
+      ],
+      "errors": []
+    },
+    "eprtr": {
+      "status": "ok",
+      "files": [
+        {
+          "url": "https://sdi.eea.europa.eu/datashare/public.php/dav/files/sptXqwkQr5g7Bp5/eea_t_ied-eprtr_p_2007-2024_v16_r00/User%20friendly%20.csv%20files.zip",
+          "path": "eprtr/eprtr_csv_v16.zip",
+          "bytes": 147626010,
+          "sha256": "d0e0c1c14f7173ee19f283025ae1d5718b74b082512b8f7148ecf82d4a334a6b",
+          "downloaded_at": "2026-09-29T17:17:21.150686+00:00"
+        }
+      ],
+      "errors": []
+    }
+  },
+  "updated_at": "2026-09-29T17:17:21.153089+00:00"
+}
