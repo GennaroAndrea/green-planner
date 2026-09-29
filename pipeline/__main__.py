@@ -3,6 +3,7 @@
 import argparse
 import sys
 
+from pipeline.build import build
 from pipeline.config import load_config
 from pipeline.download import download_all
 
@@ -17,11 +18,16 @@ def main() -> int:
     dl.add_argument("--only", nargs="+", metavar="SOURCE", help="download only these sources")
     dl.add_argument("--force", action="store_true", help="re-download existing files")
 
+    sub.add_parser("build", help="build data/processed/ artefacts from data/raw/")
+
     args = parser.parse_args()
     config = load_config(args.city)
 
     if args.command == "download":
         return 0 if download_all(config, only=args.only, force=args.force) else 1
+    if args.command == "build":
+        build(config)
+        return 0
     return 1
 
 

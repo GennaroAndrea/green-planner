@@ -87,20 +87,57 @@ grid:
   default_cell_size_m: 250
 
 urban_mask:  # Q6
-  min_residents: 50
+  # 50 residents per 250 m cell, applied as a density so 500 m and clipped edge cells use the same rule
+  min_resident_density_km2: 800
   min_artificial_share: 0.30
+  # Clipped cells smaller than this share of a full cell (slivers along the boundary) are dropped
+  min_cell_area_share: 0.10
 
 population:  # Q4
   exclude_uncovered_zones: true
+  # IPF indicator = total residents (under67 + over67), as density. Vulnerable = under14 + over67.
+  indicator: density_km2
+
+# Neighbourhoods (Q16): SIT quartieri. `sit_name` is the `nome` field in quartieri.zip,
+# `rione` the RIONE value in the population CSVs (null = not covered, excluded from the analysis).
+zones:
+  aggregate_from_cell_size_m: 250  # zone aggregates are computed from this grid
+  items:
+    - {id: 1, sit_name: "I - SAN NICOLA", name: "San Nicola", rione: "SAN NICOLA"}
+    - {id: 2, sit_name: "II - MURAT", name: "Murat", rione: "MURAT"}
+    - {id: 3, sit_name: "III - MADONNELLA", name: "Madonnella", rione: "MADONNELLA"}
+    - {id: 4, sit_name: "IV - LIBERTA'", name: "Libertà", rione: "LIBERTA'"}
+    - {id: 5, sit_name: "V - JAPIGIA", name: "Japigia", rione: "JAPIGIA"}
+    - {id: 6, sit_name: "VI - SAN PASQUALE", name: "San Pasquale", rione: "SAN PASQUALE"}
+    - {id: 7, sit_name: "VII - CARRASSI", name: "Carrassi", rione: "CARRASSI"}
+    - {id: 8, sit_name: "VIII - PICONE", name: "Picone", rione: "PICONE"}
+    - {id: 9, sit_name: "IX - STANIC", name: "Stanic", rione: "STANIC"}
+    - {id: 10, sit_name: "X  - MARCONI - SAN GIROLAMO - FESCA", name: "Marconi - San Girolamo - Fesca", rione: "MARCONI-SAN GIROLAMO FESCA"}
+    - {id: 11, sit_name: "XI - SAN PAOLO", name: "San Paolo", rione: "SAN PAOLO"}
+    - {id: 12, sit_name: "XII - PALESE - MACCHIE", name: "Palese - Macchie", rione: "PALESE MACCHIE"}
+    - {id: 13, sit_name: "XIII - SANTO SPIRITO", name: "Santo Spirito", rione: "SANTO SPIRITO"}
+    - {id: 14, sit_name: "XIV - CARBONARA DI BARI", name: "Carbonara", rione: "CARBONARA"}
+    - {id: 15, sit_name: "XV - CEGLIE DEL CAMPO", name: "Ceglie del Campo", rione: "CEGLIE"}
+    - {id: 16, sit_name: "XVI - LOSETO", name: "Loseto", rione: "LOSETO"}
+    - {id: 17, sit_name: "XVII - TORRE A MARE", name: "Torre a Mare", rione: null}
 
 traffic:  # Q8
   aggregate_detectors: sum
   exclude_months: ["2025-08"]
   zero_is_missing: true
+  # Detector-days above this are sensor errors, treated as missing (Q25): one lane can't carry
+  # more than ~2,000 veh/h. E.g. BG022 has one-day spikes of 131,674 between days of ~450.
+  max_detector_daily_vehicles: 50000
   kernel_sigma_m: 300
+  # Kernel weights below this are set to 0 (1% ≈ 910 m with σ = 300 m). Without it, the log
+  # transform turns the Gaussian tail into mid-range scores far from any sensor.
+  kernel_min_weight: 0.01
+  # Controllers whose mean daily total exceeds Q3 + k * IQR are flagged (kept, shown in the layer)
+  outlier_iqr_factor: 3
 
 air:  # Q3, Q19
   pollutants: [NO2, PM10, PM2.5]
+  idw_power: 2
   annual_means_file: data/manual/arpa_annual_2025.csv
   limit_values_ugm3:  # EU Directive 2024/2881, annual limits applicable from 2030
     NO2: 20
@@ -137,6 +174,7 @@ trees:  # Q12
 
 sensitivity:  # Q17
   runs: 1000
+  seed: 42
   spread_pp: 5
   top_n_zones: 10
   top_share_cells: 0.10

@@ -139,70 +139,19 @@ Priority uses MoSCoW: **M** = must, **S** = should, **C** = could.
 
 ## 6. Methodology
 
-### 6.1 Spatial unit
-- **Primary**: regular square grid in EPSG:32633. The pipeline computes **both 250 m and 500 m**, selectable in the UI, with **250 m as the default** (Q7).
-- **Summary**: **quartieri** from the SIT (D8), which likely match the 16 population `RIONE` values. Fallback: circoscrizioni 2013 (D9) if the SIT can't be downloaded (Q16).
-- **Study area**: municipal boundary ∩ urban mask. A cell is analysed if it has **≥ 50 residents OR ≥ 30% of its area in CORINE class 1 "artificial surfaces"** (*Uso del Suolo 2011*) (Q6). Zones not covered by the population data (e.g. Torre a Mare) are **excluded**, and the methodology page says so (Q4a).
+The methodology now lives in **`docs/methodology.md`** (in Italian, by exception to the language rule). That file is the single, up-to-date description of how the model works and why each choice was made. This section used to contain the pre-implementation version. It was replaced at the end of Phase 1 so there is no second copy that goes stale.
 
-### 6.2 Indicators (raw, per cell)
-| Indicator | Raw metric | Method |
+Where the old subsections went (other sections of this plan still cite them):
+
+| Old section | Topic | `docs/methodology.md` |
 |---|---|---|
-| **Green deficit** | % of cell area covered by D1 polygons | Polygon/cell intersection area. Deficit = 100 − normalised coverage. |
-| **Traffic** | Mean daily vehicles | Per controller: **sum of all its detectors** (flag suspicious totals), mean over **all available months except August 2025**. A daily value of `0` counts as **missing**. Spread to cells with a **Gaussian kernel, σ = 300 m** (Q8). |
-| **Air pollution** | Mean ratio to the **EU 2030 annual limit values** (Directive 2024/2881: NO₂ 20, PM10 20, PM2.5 10 µg/m³) of **NO₂, PM10, PM2.5** (Q19) | **2025 annual means per station**, copied by hand from the ARPA Puglia annual report into a CSV, with the source cited (fallback: mean of the daily API values we collect). A station missing a pollutant is averaged over the ones it has. IDW interpolation over cells (Q3). |
-| **Exposed population** | Residents per cell = `under67` + `over67`. Vulnerable residents = `under14` + `over67`. | Join addresses to the SIT **civic-number points**. Unmatched addresses fall back to spreading the rione total over its residential cells (Q4b). |
-| **Industrial pressure** | Distance-weighted sum of reported **NOₓ + PM10** releases | **E-PRTR** facilities within **10 km** of Bari that **reported in the last 5 years** (Q18). If there are **fewer than 3**, the indicator is dropped and its weight goes proportionally to the others (Q5). With current data: 2, so it's dropped and shown only as a context layer. Worded as "pressure", never "cause". |
-
-### 6.3 Normalisation
-Robust min–max to 0–100: values ≤ 5th percentile → 0, ≥ 95th → 100, linear in between. Computed over the study-area cells only. **Log transform first** for traffic and population (Q9).
-
-### 6.4 IPF
-```
-IPF = Σ wᵢ · scoreᵢ      (Σ wᵢ = 1, scoreᵢ ∈ [0,100])
-```
-Default weights, adjusted to data quality (Q10):
-
-| Pollution | Green deficit | Traffic | Population | Industry |
-|---|---|---|---|---|
-| 20 | 30 | 20 | 20 | 10 |
-
-If industry is dropped (Q5 fallback), its 10 points are **redistributed proportionally** to the other four.
-
-Classes (Q11): **4 classes** (bassa / media / medio-alta / alta, shown green / yellow / orange / red), with boundaries at the **quartiles** of the analysed cells (neighbourhoods use quartiles of the neighbourhoods). The UI states *"priorità relativa rispetto al resto della città"*.
-
-### 6.5 Tree estimate (model)
-```
-target_green_m2   = target_pct × cell_area
-deficit_m2        = max(0, target_green_m2 − current_green_m2)
-plantable_m2      = deficit_m2 × plantable_fraction
-new_trees         = floor(plantable_m2 / crown_area_per_tree)
-```
-Default parameters (Q12). They are stored in config and shown (and editable) in the UI as model assumptions:
-
-| Parameter | Default | Note |
-|---|---|---|
-| `target_pct` | **15%** | From the original doc. The methodology page mentions the 3-30-300 guideline (30% canopy, Konijnendijk 2021) and explains that canopy is not the same as mapped green areas. |
-| `plantable_fraction` | **25%** | A pure assumption: we have no plantable-space data for Bari. |
-| `crown_area_per_tree` | **30 m²** | A medium tree with about a 6 m crown. |
-
-### 6.6 Explanation generation
-For each zone, rank the weighted contributions `wᵢ·scoreᵢ`. Show the top 3 drivers with Italian templates, e.g. *"Traffico elevato (83/100): contribuisce per 17 punti all'indice."* Templates live in the frontend i18n file. The backend returns keys + numbers, not sentences.
-
-### 6.7 Weight sensitivity check
-Purpose: show that the priority ranking is **not an artefact of the chosen weights**. This answers the likely jury objection "your weights are arbitrary".
-
-Method (parameters decided in Q17):
-1. **Monte Carlo perturbation**: draw **N = 1,000** weight vectors from a Dirichlet distribution centred on the default weights. The concentration parameter is tuned to give about **±5 percentage points** of spread per weight. Every vector sums to 1.
-2. For each vector, recompute the IPF of every cell and neighbourhood, then rank them.
-3. For each zone, store:
-   - the **rank interval** (5th–95th percentile of its rank across runs);
-   - the **top-N frequency** (share of runs in which it stays in the top N: **top 10 neighbourhoods / top 10% of cells**);
-   - a **class stability** (share of runs in which it keeps its priority class).
-4. **Robustness flag**: "robust" if top-N frequency **≥ 80%** (or class stability ≥ 80% for zones outside the top N), otherwise "sensitive to weights".
-5. **City-level summary**: mean Spearman rank correlation between the default ranking and the perturbed rankings, plus the size of the overlap of the top-10 zones.
-6. **One-at-a-time check** (for the methodology page): move each weight by ±10 points, rescale the others proportionally, and report how much the top-10 changes. This shows which indicator the ranking depends on most.
-
-The Monte Carlo runs offline in the pipeline for the default weights, over a few thousand cells × 1,000 runs with vectorised numpy, which takes seconds. When the user moves the sliders (FR-45), the IPF updates immediately. The sensitivity for custom weights is recomputed on request with a "Verifica robustezza" button, not on every slider move.
+| 6.1 | Spatial unit, study area | §4 |
+| 6.2 | Indicators | §5 |
+| 6.3 | Normalisation | §6 |
+| 6.4 | IPF, weights, classes | §7, §8 |
+| 6.5 | Tree estimate | §10 |
+| 6.6 | Explanation generation | §11 |
+| 6.7 | Weight sensitivity check | §12 |
 
 ---
 
@@ -238,16 +187,19 @@ The Monte Carlo runs offline in the pipeline for the default weights, over a few
 - Frontend: **React + TypeScript + Vite**, **npm**. Map: **MapLibre GL** via `react-map-gl`, basemap **CARTO Positron** (free, no API key). Styling: **Tailwind CSS** (+ headless components). Charts: Recharts.
 - Tests: `pytest` for pipeline + API, `vitest` for critical frontend logic (optional).
 
-### 7.2 API sketch
+### 7.2 API
+As built in Phase 2 (`backend/main.py`, interactive docs at `/docs`). Custom weights are passed as `weights=pollution:25,green_deficit:35,traffic:20,population:20`: percentage points of the active indicators, summing to 100 (±0.1). Without `weights`, the defaults apply.
+
 | Method | Path | Description |
 |---|---|---|
-| GET | `/api/metadata` | Sources, dates, default weights, parameters, disclaimers |
-| GET | `/api/cells?weights=…` | Grid GeoJSON with scores + IPF (optionally recomputed with weights) |
-| GET | `/api/zones?weights=…` | Neighbourhood GeoJSON with aggregates |
-| GET | `/api/zones/{id}` / `/api/cells/{id}` | Detail: raw values, scores, contributions, trees, top drivers |
-| GET | `/api/layers/{green\|traffic\|air}` | Context layers |
-| GET | `/api/ranking?level=zone&limit=20&weights=…` | Sorted list (includes rank interval + robustness flag) |
-| GET | `/api/sensitivity?level=zone&weights=…` | Sensitivity results: precomputed for the default weights, computed on request for custom weights |
+| GET | `/api/health` | Status + artefact build time |
+| GET | `/api/metadata` | `metadata.json` (sources, dates, default weights, parameters, disclaimer keys) + `layers` |
+| GET | `/api/cells?grid=250&weights=…` | Grid GeoJSON with map properties only (`cell_id`, `zone_id`, `analysed`, `ipf`, `ipf_class`, `rank`, `robust`) |
+| GET | `/api/zones?weights=…` | Neighbourhood GeoJSON (`zone_id`, `name`, `analysed`, `ipf`, `ipf_class`, `rank`, `robust`, `trees_new`) |
+| GET | `/api/zones/{id}` / `/api/cells/{cell_id}` (`?weights=…`) | Detail: raw values, scores, weights, contributions, top drivers, trees, sensitivity, descriptive stats |
+| GET | `/api/layers/{green\|traffic\|air\|industry}` | Context layers (served as built) |
+| GET | `/api/ranking?level=zone\|cell&grid=&limit=20&weights=…` | Analysed items sorted by rank, with rank interval + robustness |
+| GET | `/api/sensitivity?level=zone\|cell&grid=&weights=…` | Sensitivity parameters, city-level summary and per-item results: precomputed for the default weights, computed on request for custom weights |
 
 ### 7.3 Repository layout (starting point, can evolve)
 ```
@@ -295,6 +247,15 @@ No timeline is set. Coding starts once this planning session is closed. The phas
 1.8 Export + a sanity-check notebook/map (do the results make sense for Bari? e.g. Libertà/Murat vs Poggiofranco).
 **Done when**: `python -m pipeline build` produces `data/processed/` from `data/raw/` in one command, and the sanity map looks plausible.
 
+**Status (2026-09-29): done.** Q20–Q29 were raised and decided during this phase.
+- `uv run python -m pipeline build` builds everything in about 30 s. The artefact schema is in `docs/artefacts.md`. Modules: `loaders`, `grid`, `indicators`, `model` (shared with the backend), `sensitivity`, `build`.
+- Study area: 1,127 of 2,006 cells at 250 m, and 315 of 528 at 500 m. 16 of 17 quartieri are analysed (Torre a Mare is excluded).
+- Population: 92.3% of residents matched to a civic point (exact or number-only). The rest are spread over their quartiere's civic points, so no resident is lost.
+- Traffic: 66 of 83 controllers have valid data. 17 report only zeros in every month. BG022 has isolated one-day spikes (up to 327,675/day, between normal readings of 300–2,500), which the detector plausibility cap removes (Q25).
+- Sanity check: the top zones are Madonnella, Murat, San Pasquale, Libertà and San Nicola (dense centre, little public green). The bottom zones are Carbonara and Ceglie (low pollution and traffic). The ASI industrial area is analysed through artificial surface, with a population score of about 0.
+- Traffic cutoff (Q24): 351 of 1,127 analysed 250 m cells are beyond about 910 m from any sensor and get traffic 0. The zone top 10 didn't change.
+- Sensitivity (default weights): zones have mean Spearman 0.98, a mean top-10 overlap of 9.98/10, and 14 of 16 are robust (Palese - Macchie and Loseto, ranks 12–13, are sensitive to weights). At 250 m, cells have mean Spearman 0.98, and 72% are robust (77% of the top 10%).
+
 ### Phase 2: Backend
 2.1 FastAPI app loading the artefacts at startup.
 2.2 Endpoints from Section 7.2, with Pydantic response models.
@@ -303,7 +264,14 @@ No timeline is set. Coding starts once this planning session is closed. The phas
 2.5 pytest: IPF math, weight validation, endpoint smoke tests.
 **Done when**: all endpoints return real data and the tests pass.
 
+**Status (2026-09-29): done.** Q30–Q33 were raised and decided during this phase. Review and handoff: `docs/handoff/phase_2.md`.
+- `backend/store.py` loads the artefacts at startup (about 0.5 s), recomputes custom-weight scenarios with `pipeline.model` / `pipeline.sensitivity` and caches them. `backend/schemas.py` has the Pydantic models, and `backend/main.py` the routes (API table in §7.2).
+- Recomputing with the default weights reproduces every precomputed column exactly (IPF, class, rank, sensitivity) at all three levels.
+- Map payload: `/api/cells` is 1.2 MB raw, 190 KB gzipped, served in about 0.12 s locally. A custom-weight recompute of the 250 m grid (with its sensitivity check) takes about 0.2 s.
+- 57 tests pass (27 before this phase). `tests/test_backend.py` has 26 API tests on a synthetic fixture plus a smoke test on the real artefacts, and `tests/test_sensitivity.py` covers the zero-weight rule.
+
 ### Phase 3: Frontend (Italian UI)
+3.0 **Prototype gap analysis**: the user's UI prototype in `ui_prototype/` is the reference for layout and features (not for the stack: Q13 applies). List what it shows, compare it with the API (§7.2), and **add anything missing to the backend too** (asking first about any new method or data choice). See `docs/handoff/phase_2.md` B.0.
 3.1 **Responsive layout, built mobile-first** (FR-50, NFR-09): header (name → Q14), map, and a detail container that is a side panel on desktop/tablet and a bottom sheet on phones. Build this first, so every later component is made to fit it.
 3.2 Choropleth + legend (collapsible on phones) + grid/neighbourhood toggle.
 3.3 Detail panel: indicator bars, contribution breakdown, trees, "Perché questa zona è prioritaria?", robustness badge + rank interval (FR-51).
@@ -376,6 +344,20 @@ The user accepted **all recommendations** below. The detailed questions are kept
 | Q17 | **±5 pp** spread, **1,000** runs, **top 10** neighbourhoods / **top 10%** cells, **≥ 80%** = robust |
 | Q18 | Only facilities that **reported in the last 5 years** count (the user had no preference, so the recommendation was adopted; it can be changed). With the current data that's 2 (Modugno CCGT 2024, O-I 2022), so the **industry indicator is dropped** and its 10 points are redistributed proportionally. The recent facilities are shown as a **context layer**. |
 | Q19 | **EU Directive 2024/2881 (2030) limits**: NO₂ 20, PM10 20, PM2.5 10 µg/m³ |
+| Q20 | Population indicator = **total residents** (under67 + over67). Vulnerable residents are shown in the detail only. (Phase 1) |
+| Q21 | Population indicator as **density** (residents/km²), so clipped edge cells aren't penalised. (Phase 1) |
+| Q22 | Urban-mask resident threshold applied as a **density**: 50 per 250 m cell = **800/km²** (so 200 per 500 m cell). (Phase 1) |
+| Q23 | Unmatched residents are spread over the **civic-number points of their quartiere**, in equal shares. (Phase 1) |
+| Q24 | Traffic kernel **cut off below 1% influence** (≈ 910 m with σ = 300 m): cells farther from every sensor get traffic 0 ("no measured traffic nearby"). Without the cutoff, the log transform (Q9) turned the Gaussian tail into mid-range scores (e.g. 51/100 at 900 m from a 20,000-vehicle intersection). (Phase 1) |
+| Q25 | Traffic detector-days above **50,000 vehicles** are treated as missing. Evidence: BG022 has isolated one-day spikes (65,719, 131,674, 261,885 and 327,675) between normal readings of 300–2,500 on the same detector. One lane can't exceed about 48,000/day. 99.9% of all readings are below 21,000. Only 3 readings are removed in the months used, and the consistently busy sensor at 30–38k/day is untouched. (Phase 1) |
+| Q26 | Air-pollution IDW **power 2**. (Phase 1) |
+| Q27 | A cell belongs to the quartiere containing its **centre point**. Zone aggregates come from the **250 m** grid. (Phase 1) |
+| Q28 | Clipped cell fragments **< 10%** of a full cell are dropped from the grid. (Phase 1) |
+| Q29 | A controller's daily traffic = **sum of its detectors' averages** (each detector averaged over its valid days), so a missing day on one detector doesn't lower the total. (Phase 1) |
+| Q30 | Custom weights with a **non-zero weight for an inactive indicator** (`industry`) are **rejected** (HTTP 400). A weight of 0 is accepted and ignored. (Phase 2) |
+| Q31 | Custom weights may be **0 to 100** per indicator. A **0 weight stays 0** in every sensitivity run: only the non-zero weights are perturbed, and the ±5 pp spread is calibrated on them. If there is nothing to perturb (a single non-zero indicator, or weights too concentrated for ±5 pp), the ranking is still returned and sensitivity is marked **not applicable**. The default results are unchanged. (Phase 2) |
+| Q32 | API tests run on a **synthetic fixture** (tiny artefacts written to a temp dir), plus a smoke test on the real `data/processed/` that is skipped when it isn't built. (Phase 2) |
+| Q33 | The open model issues from Phase 1 (green-deficit saturation, artificial-only cells) are **discussed later, before the demo**, not before Phase 2. (Phase 2) |
 
 ### 10.1 Detailed questions (rationale)
 
