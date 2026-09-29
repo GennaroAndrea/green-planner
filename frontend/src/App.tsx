@@ -13,7 +13,7 @@ import { DisclaimerBar, PanelBody, PanelTabs } from './components/Panel'
 import { Icon, Spinner } from './components/ui'
 import { cx, ICONS } from './lib/ui'
 import { APP_NAME, ERRORS } from './i18n/it'
-import { useBreakpoint, useFetch, useTheme } from './lib/hooks'
+import { useBreakpoint, useFetch, useMediaQuery, useTheme } from './lib/hooks'
 import { AppProvider } from './AppProvider'
 import { useApp } from './state'
 
@@ -40,6 +40,8 @@ function Layout({ dark, toggleTheme }: { dark: boolean; toggleTheme: () => void 
   const app = useApp()
   const bp = useBreakpoint()
   const phone = bp === 'phone'
+  // Landscape phones get the tablet layout, but the open legend would cover most of the map
+  const short = useMediaQuery('(max-height: 499px)')
   const [snap, setSnap] = useState<SheetSnap>('peek')
   const [collapsedPref, setCollapsed] = useState(false)
   const collapsed = bp === 'tablet' && collapsedPref // only the tablet panel collapses
@@ -93,10 +95,10 @@ function Layout({ dark, toggleTheme }: { dark: boolean; toggleTheme: () => void 
           >
             <div className="pointer-events-auto">
               <Legend
-                key={phone ? 'p' : 'd'}
+                key={phone || short ? 'p' : 'd'}
                 data={map.data}
                 loading={map.loading}
-                collapsible={phone}
+                collapsible={phone || short}
                 footer={!phone && collapsed ? <DisclaimerBar /> : undefined}
               />
             </div>

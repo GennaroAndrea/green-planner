@@ -11,6 +11,7 @@ Documentation (read the relevant ones before starting a task):
 - `docs/artefacts.md`: schema of the pipeline outputs in `data/processed/` (what the backend loads).
 - `docs/handoff/phase_<N>.md`: review + handoff written at the end of each phase. **Start from the latest one.**
 - `data/manual/README.md`: sources of the hand-transcribed data.
+- `docs/demo_script.md`: the demo script (Italian, Q52). `deploy/README.md`: the committed data snapshot for the Render deploy (Q51).
 
 ## Commands
 
@@ -25,6 +26,8 @@ uv run ruff check . && uv run ruff format .
 uv run uvicorn backend.main:app --reload  # backend on :8000 (serves frontend/dist if built)
 cd frontend && npm run dev                # frontend dev server (proxies /api to :8000)
 cd frontend && npm run build && npm run lint
+make demo                                 # demo: build + backend on :8080 + ngrok (make demo-local: no ngrok)
+make snapshot                             # after `pipeline build`: refresh deploy/data/ (Render deploy)
 ```
 
 - City config (data sources + all model parameters): `config/bari.yaml`.

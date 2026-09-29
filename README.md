@@ -9,6 +9,7 @@ The final product name will be chosen with the team.
 - Methodology (Italian): [`docs/methodology.md`](docs/methodology.md)
 - Pipeline output schema: [`docs/artefacts.md`](docs/artefacts.md)
 - Phase reviews and handoffs: [`docs/handoff/`](docs/handoff/)
+- Demo script (Italian): [`docs/demo_script.md`](docs/demo_script.md)
 
 ## Layout
 
@@ -19,6 +20,8 @@ pipeline/   offline data pipeline (Python)
 backend/    FastAPI app
 frontend/   React + TypeScript + Vite app (UI in Italian)
 tests/      pytest suite
+scripts/    demo launcher
+deploy/     committed data snapshot for the Render deploy
 ```
 
 ## Setup
@@ -64,6 +67,26 @@ The backend loads `data/processed/` at startup (override with `GREEN_PLANNER_DAT
 ```
 
 React + TypeScript + Vite, MapLibre GL (via `react-map-gl`) on CARTO basemaps, Tailwind CSS and Headless UI. The UI is in Italian, and all its texts live in `frontend/src/i18n/it.ts`. The layout is mobile-first: a bottom sheet on phones (< 640 px), a collapsible side panel on tablets, and a fixed side panel on desktop. The light and dark themes follow the device setting and can be toggled from the header. Fonts are bundled, so the only external requests are the basemap tiles.
+
+## Demo
+
+```bash
+make demo          # data check → frontend build → backend on :8080 → ngrok (https://green-planner.ngrok.io)
+make demo-local    # the same on http://localhost:8080, without ngrok
+```
+
+`scripts/demo.sh` uses `data/processed/` if it's built, otherwise it rebuilds it offline from `data/raw/`, and otherwise it falls back to the committed snapshot in `deploy/data/`. It rebuilds the frontend only when a source file is newer than `frontend/dist/`. Ctrl+C stops both ngrok and the backend (whose log goes to `data/interim/demo_uvicorn.log`). The ngrok URL and port can be changed with `DEMO_NGROK_URL` and `DEMO_PORT`.
+
+### Fallback deploy on Render
+
+The same app runs as a Docker image on Render's free plan (`Dockerfile`, `render.yaml`), as a backup if the laptop or ngrok fails. Render builds from git, so the artefacts the backend loads are committed in `deploy/data/` (see [`deploy/README.md`](deploy/README.md)):
+
+```bash
+make snapshot      # after every `pipeline build`: copy the artefacts into deploy/data/, then commit
+make docker-build && make docker-run    # test the image locally on http://localhost:8080
+```
+
+To set it up once: in the Render dashboard choose **New → Blueprint** and select this repository; `render.yaml` does the rest, and every push to `main` redeploys. The free service sleeps after 15 minutes without traffic and takes about a minute to wake, so open it a few minutes before the demo.
 
 ## Development
 

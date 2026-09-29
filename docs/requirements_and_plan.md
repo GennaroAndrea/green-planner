@@ -299,6 +299,11 @@ No timeline is set. Coding starts once this planning session is closed. The phas
 4.4 README (English) + slide material if needed.
 **Done when**: the full demo runs from a clean start in under 2 minutes with no network dependency except ngrok + basemap tiles.
 
+**Status (2026-09-29): done, except the checks only the user can run** (real phone, Render deploy after the push). Q51–Q52 decided. Review and handoff: `docs/handoff/phase_4.md`.
+- `make demo` / `make demo-local` (`scripts/demo.sh`), `make snapshot`, and the Render deploy (`Dockerfile`, `render.yaml`, `deploy/data/`).
+- Over ngrok, a cold load shows the map and legend in 1.2–1.4 s (1366×768, no throttling or Fast 4G emulation), and about 3 s with Slow 4G emulation. A clean start from the snapshot is ready in 7 s (warm uv/npm caches).
+- NFR-10 device emulation over ngrok (iPhone SE, Pixel 7 and iPad in both orientations, 1366×768, 1920×1080): no horizontal scroll, no console errors. Landscape phones were fixed (collapsed legend on short screens, compact header below 768 px).
+
 ### Phase 5 (stretch, only if time allows)
 Weight presets ("salute", "clima", "equità"), CSV export, ~~Sentinel-2 NDVI~~ (done in Q49), bus stops (GTFS), Copertino/Lecce proof of transferability.
 
@@ -387,6 +392,8 @@ The user accepted **all recommendations** below. The detailed questions are kept
 | Q48 | Both Could items are in Phase 3: **FR-48** Comune/year selectors (only Bari / latest data enabled, the others "prossimamente") and **FR-49** CSV export of the ranking. (Phase 3) |
 | Q49 | **Green deficit from satellite vegetation** (closes Q33, issue 1: with the Comune's public green, 49% of analysed cells had deficit 100). Sentinel-2 L2A (D11), **median NDVI of the clear summer scenes (Jun–Aug 2025)**, a 10 m pixel is vegetated when **NDVI ≥ 0.30**. `veg_share` replaces `green_share` as the indicator, and the **tree estimate uses the same measure** (target 15%). The public green areas stay as a context layer and a descriptive value. Evidence: summer ≥ 0.30 leaves 117 cells (10%) without vegetation; ≥ 0.40 would leave 33%; the year's greenest value makes the farmland fringe look green. Public green and satellite vegetation are uncorrelated (Spearman 0.00): e.g. tree-lined-street polygons have NDVI 0.11. Trees: 45,278 (was 54,855). (Phase 3) |
 | Q50 | **Non-residential cells** (closes Q33, issue 2): analysed cells with **0 residents** (rounded count; 302 at 250 m) keep their class and card ("area non residenziale"), but **zone and ranking tree totals count residential cells only**, with the rest shown apart ("+ N in aree non residenziali": 12,345 of 45,278 trees), and the **zone simulator spreads trees over residential cells only**. (Phase 3) |
+| Q51 | **Render fallback deploy** (Phase 4 extra; ngrok stays the primary demo URL). The app runs as one Docker image (`Dockerfile`: Node build → Python/uv, `render.yaml`: free plan, Frankfurt, health check `/api/health`). Render builds from git, so the artefacts the backend loads are **committed as a snapshot in `deploy/data/`** (~1.7 MB, refreshed with `make snapshot`); `data/processed/` stays gitignored. The same snapshot is the "clean start" data fallback of `scripts/demo.sh` (instead of a separate tar.gz). Free plan: the service sleeps after 15 min idle and takes about a minute to wake. (Phase 4) |
+| Q52 | The **demo script** (`docs/demo_script.md`) is written **in Italian**, about 3 minutes, with likely jury questions: it is a presenter aid for an Italian jury, like UI copy. No slide deck and no recorded video for now. (Phase 4) |
 
 ### 10.1 Detailed questions (rationale)
 

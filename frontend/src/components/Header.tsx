@@ -59,7 +59,7 @@ export default function Header({ dark, toggleTheme }: { dark: boolean; toggleThe
             <Picker label="Comune" options={COMUNI} />
             <span aria-hidden>·</span>
             <Picker label="Anno dei dati" options={YEARS} />
-            <span aria-hidden className="hidden sm:inline">
+            <span aria-hidden className="hidden md:inline">
               · Indice di Priorità di Forestazione
             </span>
           </div>
@@ -73,7 +73,7 @@ export default function Header({ dark, toggleTheme }: { dark: boolean; toggleThe
           className={cx('flex min-h-11 items-center gap-1.5 rounded-lg px-2.5 text-sm text-ink-2 hover:bg-surface-2 hover:text-ink')}
         >
           <Icon d={ICONS.info} />
-          <span className="hidden sm:inline">Metodologia e fonti</span>
+          <span className="hidden md:inline">Metodologia e fonti</span>
         </button>
         <button
           type="button"
