@@ -30,7 +30,7 @@ Build a decision-support web application. Using Open Data Puglia, it identifies 
 - Demo: backend runs on a laptop and is exposed via an **ngrok** tunnel.
 
 ### 1.4 Out of scope (MVP), possible extensions
-Copernicus/Sentinel-2 NDVI, temperature/heat stress, ISPRA soil sealing, GTFS/AMTAB bus stops, road accidents, other municipalities (Copertino, Lecce), validation against Lecce planting data, multi-year comparison.
+**Citizen view** (*vista cittadino*: neighbourhood summary for residents and a form to report a spot for a tree, prototype `ui_prototype/v1/ugp_atlante_vista_cittadino.html`): **ignored for now**, to be added only once the demo works end to end (Q40). Copernicus/Sentinel-2 NDVI, temperature/heat stress, ISPRA soil sealing, GTFS/AMTAB bus stops, road accidents, other municipalities (Copertino, Lecce), validation against Lecce planting data, multi-year comparison.
 
 ---
 
@@ -96,11 +96,12 @@ Priority uses MoSCoW: **M** = must, **S** = should, **C** = could.
 | FR-20 | Serve the grid cells with indicators + IPF as GeoJSON. | M |
 | FR-21 | Serve the neighbourhoods with aggregated values as GeoJSON. | M |
 | FR-22 | Serve the detail of one cell/neighbourhood: indicator values, normalised scores, weighted contributions, tree estimate, text explanation keys. | M |
-| FR-23 | Recompute the IPF with user-supplied weights (weights validated to sum to 100%). | S |
+| FR-23 | Recompute the IPF with user-supplied weights (each 0–100, normalised on their total, Q36; inactive indicators must be 0, Q30). | S |
 | FR-24 | Serve the metadata: data sources, reference dates, disclaimers (ARPA validation, model estimate, no causality). | M |
 | FR-25 | Serve the context layers: existing green areas, traffic sensors, ARPA stations. | S |
 | FR-26 | Serve the built frontend as static files, so one ngrok tunnel exposes the whole app. | M |
 | FR-27 | Serve the sensitivity results: per-zone rank interval + robustness flag, and the city-level stability summary. | M |
+| FR-28 | **Tree simulator**: for one cell or zone and N new trees, return green area/share, green-deficit score, IPF, class and rank before and after, plus the model's tree estimate and the trees needed to reach the target share (Q37). | S |
 
 ### 4.3 Frontend (UI in Italian)
 | ID | Requirement | Pri |
@@ -111,12 +112,14 @@ Priority uses MoSCoW: **M** = must, **S** = should, **C** = could.
 | FR-43 | **"Perché questa zona è prioritaria?"**: generated explanation listing the top drivers in plain Italian. | M |
 | FR-44 | Toggleable context layers: existing green areas, traffic sensors, ARPA stations. | S |
 | FR-45 | Weight sliders ("scenario"): change the weights and the map updates. | S |
-| FR-46 | Ranking table of the top-N priority neighbourhoods/cells, sortable. | S |
+| FR-46 | Ranking table of the top-N priority neighbourhoods/cells, sortable. Each row has a bar split into the indicators' contributions (prototype). | S |
 | FR-47 | "Metodologia e fonti" page/modal: formula, weights, data sources + dates, limitations and disclaimers. | M |
 | FR-48 | Comune/year selectors as in the mockup (only Bari / latest data enabled, others disabled "prossimamente"). | C |
 | FR-49 | Export the current ranking as CSV. | C |
 | FR-50 | **Responsive layout** that adapts to phone, tablet and desktop (see NFR-09). On a phone: full-screen map, zone details in a draggable bottom sheet, legend collapsed to a button, weight sliders and ranking in a drawer/tab. On tablet: map + collapsible side panel. On desktop: map + fixed side panel. | M |
 | FR-51 | Show the **robustness** of each zone in the detail panel and ranking. Example: badge *"Priorità robusta"* / *"Priorità sensibile ai pesi"*, plus the rank interval *"tra 3° e 7° posto"*. The methodology page shows the city-level stability summary. | M |
+| FR-52 | **Map indicator tabs** (prototype): *Priorità* (IPF classes) plus one tab per active indicator (*Aria*, *Traffico*, *Verde*, *Popolazione*) colouring the map by that indicator's 0–100 score. The prototype's *AIA* tab shows the industrial facilities context layer (Q35). | S |
+| FR-53 | **Simulator** (prototype), opened from the selected cell/zone card (Q44): a slider adds new trees, before/after green share, IPF and class. Markers for the model's tree estimate and for the trees needed to reach 15%. Disclaimer: only the green indicator changes (FR-28, Q37). | S |
 
 ---
 
@@ -134,6 +137,7 @@ Priority uses MoSCoW: **M** = must, **S** = should, **C** = could.
 | NFR-08 | **Licensing**: respect and cite the dataset licences (mostly IODL/CC-BY) in the UI. |
 | NFR-09 | **Responsive design**: the UI works correctly from 360 px phones to wide desktop screens, in portrait and landscape. Breakpoints: phone < 640 px, tablet 640–1024 px, desktop > 1024 px. There is no horizontal page scroll and touch targets are ≥ 44 px. The map supports touch gestures (pinch zoom, tap to select). Text stays readable without zooming. Every feature available on desktop is reachable on a phone. |
 | NFR-10 | **Device testing**: before the demo, check the layout in browser dev-tools device emulation (e.g. iPhone SE, Pixel 7, iPad, 1366×768 laptop, 1920×1080) **and** on at least one real phone via the ngrok URL. |
+| NFR-11 | **Themes** (Q39): light and dark theme, following the device setting (`prefers-color-scheme`) with a toggle in the header. **Every control is styled for both themes and matches the rest of the UI**, native form controls included: dropdowns (`<select>` and their option lists, which browsers draw in the light system style unless `color-scheme` is set; prefer a styled headless listbox), sliders, inputs, buttons. The prototype has this bug (its dropdown ignores the dark theme): don't copy it. |
 
 ---
 
@@ -188,17 +192,18 @@ Where the old subsections went (other sections of this plan still cite them):
 - Tests: `pytest` for pipeline + API, `vitest` for critical frontend logic (optional).
 
 ### 7.2 API
-As built in Phase 2 (`backend/main.py`, interactive docs at `/docs`). Custom weights are passed as `weights=pollution:25,green_deficit:35,traffic:20,population:20`: percentage points of the active indicators, summing to 100 (±0.1). Without `weights`, the defaults apply.
+As built in Phase 2 (`backend/main.py`, interactive docs at `/docs`). Custom weights are passed as `weights=pollution:25,green_deficit:35,traffic:20,population:20`: one value per active indicator, each 0–100, normalised on their total (Q36). Without `weights`, the defaults apply.
 
 | Method | Path | Description |
 |---|---|---|
 | GET | `/api/health` | Status + artefact build time |
 | GET | `/api/metadata` | `metadata.json` (sources, dates, default weights, parameters, disclaimer keys) + `layers` |
-| GET | `/api/cells?grid=250&weights=…` | Grid GeoJSON with map properties only (`cell_id`, `zone_id`, `analysed`, `ipf`, `ipf_class`, `rank`, `robust`) |
-| GET | `/api/zones?weights=…` | Neighbourhood GeoJSON (`zone_id`, `name`, `analysed`, `ipf`, `ipf_class`, `rank`, `robust`, `trees_new`) |
-| GET | `/api/zones/{id}` / `/api/cells/{cell_id}` (`?weights=…`) | Detail: raw values, scores, weights, contributions, top drivers, trees, sensitivity, descriptive stats |
+| GET | `/api/cells?grid=250&weights=…` | Grid GeoJSON with map properties only (`cell_id`, `zone_id`, `analysed`, `ipf`, `ipf_class`, `rank`, `robust`, `score_<key>` per active indicator) |
+| GET | `/api/zones?weights=…` | Neighbourhood GeoJSON (`zone_id`, `name`, `analysed`, `ipf`, `ipf_class`, `rank`, `robust`, `trees_new`, `score_<key>`) |
+| GET | `/api/zones/{id}` / `/api/cells/{cell_id}` (`?weights=…`) | Detail: raw values, scores, weights, contributions, top drivers, trees (+ target share, trees for the target, zones: cells below the target), sensitivity, descriptive stats |
+| GET | `/api/zones/{id}/simulate` / `/api/cells/{cell_id}/simulate` (`?trees=N&weights=…`) | Tree simulator (FR-28, Q37): before/after green, green-deficit score, IPF, class, rank |
 | GET | `/api/layers/{green\|traffic\|air\|industry}` | Context layers (served as built) |
-| GET | `/api/ranking?level=zone\|cell&grid=&limit=20&weights=…` | Analysed items sorted by rank, with rank interval + robustness |
+| GET | `/api/ranking?level=zone\|cell&grid=&limit=20&weights=…` | Analysed items sorted by rank, with rank interval, robustness and per-indicator contributions |
 | GET | `/api/sensitivity?level=zone\|cell&grid=&weights=…` | Sensitivity parameters, city-level summary and per-item results: precomputed for the default weights, computed on request for custom weights |
 
 ### 7.3 Repository layout (starting point, can evolve)
@@ -271,7 +276,7 @@ No timeline is set. Coding starts once this planning session is closed. The phas
 - 57 tests pass (27 before this phase). `tests/test_backend.py` has 26 API tests on a synthetic fixture plus a smoke test on the real artefacts, and `tests/test_sensitivity.py` covers the zero-weight rule.
 
 ### Phase 3: Frontend (Italian UI)
-3.0 **Prototype gap analysis**: the user's UI prototype in `ui_prototype/` is the reference for layout and features (not for the stack: Q13 applies). List what it shows, compare it with the API (§7.2), and **add anything missing to the backend too** (asking first about any new method or data choice). See `docs/handoff/phase_2.md` B.0.
+3.0 **Prototype gap analysis**: the user's UI prototype in `ui_prototype/` is the reference for layout and features (not for the stack: Q13 applies). List what it shows, compare it with the API (§7.2), and **add anything missing to the backend too** (asking first about any new method or data choice). See `docs/handoff/phase_2.md` B.0. **Done (2026-09-29)**: gap list and the backend additions (FR-28, map scores, ranking contributions, tree target) are in the handoff; Q34–Q44 decided. The citizen view is ignored for now (Q40).
 3.1 **Responsive layout, built mobile-first** (FR-50, NFR-09): header (name → Q14), map, and a detail container that is a side panel on desktop/tablet and a bottom sheet on phones. Build this first, so every later component is made to fit it.
 3.2 Choropleth + legend (collapsible on phones) + grid/neighbourhood toggle.
 3.3 Detail panel: indicator bars, contribution breakdown, trees, "Perché questa zona è prioritaria?", robustness badge + rank interval (FR-51).
@@ -358,6 +363,17 @@ The user accepted **all recommendations** below. The detailed questions are kept
 | Q31 | Custom weights may be **0 to 100** per indicator. A **0 weight stays 0** in every sensitivity run: only the non-zero weights are perturbed, and the ±5 pp spread is calibrated on them. If there is nothing to perturb (a single non-zero indicator, or weights too concentrated for ±5 pp), the ranking is still returned and sensitivity is marked **not applicable**. The default results are unchanged. (Phase 2) |
 | Q32 | API tests run on a **synthetic fixture** (tiny artefacts written to a temp dir), plus a smoke test on the real `data/processed/` that is skipped when it isn't built. (Phase 2) |
 | Q33 | The open model issues from Phase 1 (green-deficit saturation, artificial-only cells) are **discussed later, before the demo**, not before Phase 2. (Phase 2) |
+| Q34 | The UI prototype shows **5 classes** (fixed thresholds 20/40/60/80). **Kept 4 quartile classes** (Q11): with fixed thresholds all 16 quartieri (IPF 63–95) would fall into the top two classes. The UI uses 4 shades of the prototype's palette. (Phase 3.0) |
+| Q35 | **Industry in the UI: context layer only.** No industry slider or score bar (the prototype has both). The prototype's *AIA* tab shows the industrial facilities layer (proximity, never causality). (Phase 3.0) |
+| Q36 | Custom weights are **normalised on their total** (as in the prototype, "il calcolo li normalizza sul totale"): each 0–100, total > 0. Replaces the sum-to-100 rule of FR-23. (Phase 3.0) |
+| Q37 | **Tree simulator**: each new tree adds its **crown area (30 m²)** to the green area. Only the green-deficit score changes (same normalisation bounds), then the IPF with the current weights; class and rank are placed against the current city (the rest unchanged). Works on **cells and quartieri**: for a quartiere, trees are spread over its analysed 250 m cells **in proportion to their green deficit** (by area if none has a deficit), and the score is re-aggregated population-weighted. The UI shows the model estimate (`trees_new`, plantable share) and the trees needed for 15% (whole deficit / 30 m²). The prototype's "480 trees reach the target" is not kept: it contradicts the tree formula. (Phase 3.0) |
+| Q38 | Default grid stays **250 m** (Q7); the prototype's "griglia 500 m" was illustrative. (Phase 3.0) |
+| Q39 | **Light + dark theme**, following the device setting, with a toggle. All controls, dropdowns included, styled consistently for both themes (NFR-11). (Phase 3.0) |
+| Q40 | The prototype's **citizen view** (*vista cittadino*) is **ignored for now**; to be added only once the demo works end to end (§1.4). (Phase 3.0) |
+| Q41 | UI placeholder name: **"Urban Green Planner"** (the working title, as in the prototype) until the team picks the final name (Q14 still open). (Phase 3.0) |
+| Q42 | **Zone card green target**: cells keep "verde attuale → 15%"; zones show the mean public green share and the **number of analysed cells below 15%** (e.g. Libertà 20.9%, 14 of 29 cells), because a zone's mean can exceed 15% while many of its cells are below it (the deficit is summed per cell). Served as `trees.cells_below_target` in the zone detail. (Phase 3.0) |
+| Q43 | The **plantable fraction (25%) and crown area (30 m²) are not editable** in the app: shown read-only in the methodology modal; the tree simulator (Q37) covers the "what if" use. (Phase 3.0) |
+| Q44 | The **simulator opens from the selected zone/cell card** ("Simula intervento"), pre-filled with that selection: a panel next to the map on desktop, a step of the bottom sheet on phones. No separate screen with its own zone picker. (Phase 3.0) |
 
 ### 10.1 Detailed questions (rationale)
 

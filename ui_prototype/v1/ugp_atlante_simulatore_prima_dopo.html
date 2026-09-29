@@ -1,0 +1,50 @@
+<h2 class="sr-only">Simulatore con due celle affiancate, prima e dopo, e uno slider che aggiunge nuovi alberi alla zona Libertà</h2>
+<style>
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.mono{font-family:var(--font-mono);font-size:11px;color:var(--text-secondary)}
+.serif{font-family:var(--font-voice);font-weight:500}
+</style>
+<div style="background:var(--surface-1);border-radius:12px;padding:14px">
+  <p class="serif" style="margin:0;font-size:19px">Simulatore</p>
+  <p class="mono" style="margin:2px 0 12px">Zona Libertà · cella 500×500 m</p>
+  <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 4px">
+    <div><p class="mono" style="margin:0 0 4px">Prima</p>
+      <svg viewBox="0 0 160 120" width="100%" role="img" style="display:block;border-radius:4px;background:#FAEEDA"><title>Cella prima dell'intervento, senza nuovi alberi</title><rect x="0" y="52" width="160" height="12" fill="#B4B2A9" opacity="0.6"/><rect x="70" y="0" width="12" height="120" fill="#B4B2A9" opacity="0.6"/></svg></div>
+    <div><p class="mono" style="margin:0 0 4px">Dopo</p>
+      <svg id="after" viewBox="0 0 160 120" width="100%" role="img" style="display:block;border-radius:4px;background:#FAEEDA"><title>Cella dopo l'intervento, con i nuovi alberi</title><rect x="0" y="52" width="160" height="12" fill="#B4B2A9" opacity="0.6"/><rect x="70" y="0" width="12" height="120" fill="#B4B2A9" opacity="0.6"/><g id="g"></g></svg></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;margin:14px 0 2px">
+    <label for="t" style="font-size:13px;color:var(--text-secondary)">Nuovi alberi</label>
+    <input type="range" id="t" min="0" max="600" step="10" value="0" style="flex:1">
+    <span id="tv" style="font-family:var(--font-mono);font-size:13px;min-width:30px;text-align:right">0</span>
+  </div>
+  <p class="mono" style="margin:0 0 14px">Con 480 alberi la zona raggiunge il target del 15%.</p>
+  <div style="display:flex;border-top:1.5px solid var(--text-primary)">
+    <div style="flex:1;padding:12px 0"><p class="mono" style="margin:0">Copertura verde</p><p class="serif" style="margin:2px 0 0;font-size:28px;line-height:1.1"><span id="gr">8,2</span>%</p><p class="mono" style="margin:2px 0 0">era 8,2%</p></div>
+    <div style="flex:1;padding:12px 0 12px 14px;border-left:0.5px solid var(--border)"><p class="mono" style="margin:0">Indice IPF</p><p class="serif" style="margin:2px 0 0;font-size:28px;line-height:1.1"><span id="ip" style="color:#993C1D">83</span></p><p class="mono" style="margin:2px 0 0" id="dl">era 83</p></div>
+  </div>
+  <div style="height:6px;background:var(--bg-danger);border-radius:2px;margin:0 0 8px;position:relative"><div id="bar" style="height:6px;border-radius:2px;width:83%;background:#993C1D"></div></div>
+  <p id="cl" class="mono" style="margin:0 0 10px">Priorità alta</p>
+  <p class="mono" style="margin:0;color:var(--text-muted)">Simulazione semplificata: cambia solo l'indicatore del verde.</p>
+</div>
+<script>
+var g=document.getElementById('g'),P=[],seed=11;
+function rnd(){seed=(seed*9301+49297)%233280;return seed/233280;}
+while(P.length<70){var x=8+rnd()*144,y=8+rnd()*104;if((y>46&&y<70)||(x>64&&x<88))continue;P.push([x,y,3.5+rnd()*2.5]);}
+function col(v){return v>=80?['#993C1D','Priorità alta']:v>=60?['#D85A30','Priorità medio-alta']:v>=40?['#F0997B','Priorità media']:v>=20?['#FAC775','Priorità medio-bassa']:['#97C459','Priorità bassa'];}
+function upd(){
+ var t=+document.getElementById('t').value;
+ document.getElementById('tv').textContent=t;
+ var gr=8.2+t*(15-8.2)/480,k=Math.min(1,(gr-8.2)/(15-8.2)),car=89*(1-0.6*k),ipf=Math.round(83.1-0.25*(89-car));
+ document.getElementById('gr').textContent=gr.toFixed(1).replace('.',',');
+ var e=document.getElementById('ip');e.textContent=ipf;
+ var c=col(ipf);e.style.color=c[0];
+ document.getElementById('dl').textContent=ipf<83?('−'+(83-ipf)+' punti rispetto a prima'):'era 83';
+ var b=document.getElementById('bar');b.style.width=ipf+'%';b.style.background=c[0];
+ document.getElementById('cl').textContent=c[1];
+ var n=Math.round(t/600*P.length),h='';
+ for(var j=0;j<n;j++)h+='<circle cx="'+P[j][0].toFixed(1)+'" cy="'+P[j][1].toFixed(1)+'" r="'+P[j][2].toFixed(1)+'" fill="#3B6D11" fill-opacity="0.9"/>';
+ g.innerHTML=h;
+}
+document.getElementById('t').addEventListener('input',upd);upd();
+</script>

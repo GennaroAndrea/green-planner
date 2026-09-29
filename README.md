@@ -54,7 +54,7 @@ Some public-administration hosts (`sit.egov.ba.it`, `www.arpa.puglia.it`) don't 
 uv run uvicorn backend.main:app --reload         # API on :8000 (+ frontend/dist at / if built)
 ```
 
-The backend loads `data/processed/` at startup (override with `GREEN_PLANNER_DATA_DIR`), so run `pipeline build` first. Interactive API docs are at `http://localhost:8000/docs`, and the endpoint list is in [`docs/requirements_and_plan.md`](docs/requirements_and_plan.md) §7.2. Custom weights are passed as `?weights=pollution:25,green_deficit:35,traffic:20,population:20` (percentage points of the active indicators, summing to 100).
+The backend loads `data/processed/` at startup (override with `GREEN_PLANNER_DATA_DIR`), so run `pipeline build` first. Interactive API docs are at `http://localhost:8000/docs`, and the endpoint list is in [`docs/requirements_and_plan.md`](docs/requirements_and_plan.md) §7.2. Custom weights are passed as `?weights=pollution:25,green_deficit:35,traffic:20,population:20` (one value per active indicator, each 0–100, normalised on their total).
 
 ## Development
 

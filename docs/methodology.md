@@ -196,7 +196,7 @@ IPF = Σ pesoᵢ × punteggioᵢ        (Σ pesoᵢ = 1, punteggioᵢ ∈ [0, 10
 - Il peso dell'indicatore escluso è ridistribuito **in proporzione** agli altri.
 - Ogni **contributo** `pesoᵢ × punteggioᵢ` è salvato separatamente. La somma dei contributi è esattamente l'IPF, e questo è la base della spiegazione (§11).
 - L'utente può cambiare i pesi nell'app (FR-45). L'IPF si ricalcola con le stesse formule (`pipeline/model.py`, condiviso con il backend).
-- **Pesi personalizzati** (scenario): l'utente indica i punti percentuali dei soli indicatori attivi, ciascuno tra 0 e 100, con somma 100 (tolleranza ±0,1, poi riscalati a somma 1). Un peso diverso da 0 per un indicatore escluso (industria) viene rifiutato (**Q30**). Con i pesi personalizzati si ricalcolano IPF, classi (quartili), posizioni in classifica e verifica di robustezza. Punteggi, alberi e aggregazione per quartiere non dipendono dai pesi e restano invariati.
+- **Pesi personalizzati** (scenario): l'utente indica un valore per ciascun indicatore attivo, tra 0 e 100. I valori sono **normalizzati sul loro totale** (che deve essere positivo), quindi non devono sommare a 100 (**Q36**). Un peso diverso da 0 per un indicatore escluso (industria) viene rifiutato (**Q30**). Con i pesi personalizzati si ricalcolano IPF, classi (quartili), posizioni in classifica e verifica di robustezza. Punteggi, alberi e aggregazione per quartiere non dipendono dai pesi e restano invariati.
 
 ## 8. Classi di priorità
 Quattro classi (**Q11**), **bassa / media / medio-alta / alta** (verde / giallo / arancione / rosso), con confini ai **quartili** dell'IPF delle celle analizzate. Per i quartieri si usano i quartili dei 16 quartieri analizzati.
@@ -226,12 +226,37 @@ nuovi_alberi         = parte_intera(piantabile_m2 / area_chioma)
 | Parametro (**Q12**) | Valore | Motivazione |
 |---|---|---|
 | Quota obiettivo di verde | **15%** | Dall'idea originale. La pagina metodologica cita anche la regola 3-30-300 (30% di chioma arborea, Konijnendijk 2021), precisando che "chioma" e "aree verdi mappate" non sono la stessa cosa. |
-| Frazione piantabile del deficit | **25%** | Pura ipotesi: non esistono dati sullo spazio piantabile a Bari (edifici, strade, sottoservizi). Mostrata e modificabile nell'app. |
+| Frazione piantabile del deficit | **25%** | Pura ipotesi: non esistono dati sullo spazio piantabile a Bari (edifici, strade, sottoservizi). Mostrata nella pagina metodologica, non modificabile nell'app (**Q43**): per esplorare scenari c'è il simulatore (§10.1). |
 | Area di chioma per albero | **30 m²** | Albero di taglia media, chioma di circa 6 m. |
 
 - Esempio: una cella intera da 250 m (62.500 m²) senza verde ha un obiettivo di 9.375 m² e 2.344 m² piantabili, quindi **78 alberi**.
 - Totale per le celle analizzate (250 m): circa **54.900 alberi**.
 - È una **stima di modello**, e la UI lo dichiara sempre.
+
+### 10.1 Simulatore ("cosa succede se pianto N alberi?")
+Per una cella o un quartiere analizzato, il simulatore stima l'effetto di N nuovi alberi (**Q37**):
+
+```
+verde_dopo_m2      = verde_attuale_m2 + N × area_chioma          (30 m² per albero)
+quota_verde_dopo   = verde_dopo_m2 / area
+punteggio_deficit  = 100 − minmax(quota_verde_dopo)              (stessi limiti p5–p95 del calcolo, §6)
+IPF_dopo           = IPF_prima + peso_verde × (punteggio_deficit_dopo − punteggio_deficit_prima)
+```
+
+- **Cambia solo l'indicatore del verde.** Inquinamento, traffico e popolazione restano invariati: è una simulazione semplificata e la UI lo dichiara.
+- **Classe e posizione** del risultato sono calcolate rispetto al resto della città, che resta com'è (stessi confini di classe dello scenario corrente).
+- **Quartieri**: gli N alberi sono ripartiti tra le celle analizzate da 250 m del quartiere **in proporzione al loro deficit di verde** (in proporzione all'area se nessuna cella ha deficit). Poi il punteggio del quartiere si ricalcola come media pesata sulla popolazione (§9).
+- Il simulatore mostra due riferimenti:
+  - la **stima del modello** (`nuovi_alberi`, §10), che considera solo la quota piantabile (25%) del deficit;
+  - gli **alberi necessari per il 15%**, cioè `deficit_m2 / area_chioma`, arrotondato per eccesso.
+
+  Il secondo numero è di solito circa 4 volte il primo: raggiungere l'obiettivo richiederebbe più spazio di quello stimato come piantabile.
+- *Nota sui quartieri*: il deficit è la somma dei deficit delle singole celle. Un quartiere può quindi avere una quota media di verde superiore al 15% e comunque un deficit, se il verde è concentrato in poche celle. Con i dati attuali succede per Murat (16,3%), Libertà (20,9%) e San Paolo (23,2%).
+- *Nella scheda del quartiere* (**Q42**) non si mostra "quota attuale → 15%", ma la quota media e il numero di celle sotto l'obiettivo, ad esempio *"Verde pubblico medio 20,9% · 14 celle su 29 sotto il 15%"* (Libertà; Murat 13 su 25, San Paolo 46 su 82). Nella scheda della cella resta "8,2% → 15%".
+- *Esempio* (Libertà, pesi predefiniti):
+  - IPF 86,3, classe alta, 4° posto;
+  - con i 601 alberi stimati: IPF 85,1, classe medio-alta, 5° posto;
+  - con i 2.432 alberi necessari per il 15% in ogni cella: IPF 81,6, 6° posto.
 
 ## 11. Spiegazione ("Perché questa zona è prioritaria?")
 - Per ogni zona si ordinano i contributi `pesoᵢ × punteggioᵢ` e si mostrano i **3 principali**. Esempio: *"Traffico elevato (83/100): contribuisce per 18 punti all'indice."*
@@ -319,7 +344,10 @@ nuovi_alberi         = parte_intera(piantabile_m2 / area_chioma)
 | Normalizzazione, IPF, classi, alberi | `normalisation.*`, `weights`, `classes.*`, `trees.*` | `pipeline/model.py` |
 | Robustezza | `sensitivity.*` | `pipeline/sensitivity.py` |
 | Ricalcolo con pesi personalizzati (API) | `metadata.json` (pesi predefiniti, `sensitivity`) | `backend/store.py` |
+| Simulatore alberi | `trees.crown_area_m2`, limiti di normalizzazione in `metadata.json` | `pipeline/model.py` (`green_deficit_score`, `spread_trees`), `backend/store.py` |
 
 ## 16. Storico delle modifiche
 - **2026-09-29**: prima versione, alla fine della Fase 1. Include le decisioni Q20–Q29 prese durante l'implementazione.
 - **2026-09-29** (Fase 2, backend): regole dei pesi personalizzati (§7, **Q30**) e verifica di robustezza con pesi pari a 0 o troppo concentrati (§12, **Q31**). Nessun cambiamento ai risultati con i pesi predefiniti.
+- **2026-09-29** (Fase 3.0, confronto con il prototipo UI): pesi personalizzati normalizzati sul totale (§7, **Q36**); nuovo simulatore alberi (§10.1, **Q37**). Confermate le 4 classi a quartili (**Q34**) e l'esclusione dell'industria dall'indice (**Q35**). Nessun cambiamento ai risultati con i pesi predefiniti.
+- **2026-09-29** (Fase 3.0): la frazione piantabile non è modificabile nell'app (§10, **Q43**); nella scheda del quartiere si mostra il numero di celle sotto l'obiettivo del 15% (§10.1, **Q42**).

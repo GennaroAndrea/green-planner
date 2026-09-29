@@ -19,10 +19,16 @@ import numpy as np
 import pandas as pd
 import shapely
 
-from pipeline.model import compute_ipf, quantile_classes, ranks_desc, score_matrix
+from pipeline.model import (
+    compute_ipf,
+    green_deficit_score,
+    quantile_classes,
+    ranks_desc,
+    score_matrix,
+    spread_trees,
+)
 from pipeline.sensitivity import one_at_a_time, run_sensitivity, sample_weights
 
-SUM_TOLERANCE_PP = 0.1  # custom weights must sum to 100 ± this
 DEFAULT_TOLERANCE = 1e-4  # effective weights this close to the defaults use the artefacts
 COORD_DECIMALS = 6  # ≈ 0.1 m, plenty for 250 m cells
 FLOAT_DECIMALS = 3  # map properties (the detail endpoints return full precision)
@@ -50,10 +56,11 @@ class WeightsError(ValueError):
 def parse_weights(
     raw: str | None, active: list[str], inactive: list[str]
 ) -> dict[str, float] | None:
-    """Parse `key:pp,key:pp,...` into effective weights (sum 1), or None for the defaults.
+    """Parse `key:w,key:w,...` into effective weights (sum 1), or None for the defaults.
 
-    Every active indicator must be given, each weight in [0, 100], and the sum must be 100
-    (± SUM_TOLERANCE_PP). Inactive indicators are only accepted with weight 0 (Q30).
+    Every active indicator must be given, each weight in [0, 100]. The weights are normalised
+    on their total, which must be positive (Q36). Inactive indicators are only accepted with
+    weight 0 (Q30).
     """
     if raw is None or not raw.strip():
         return None
@@ -81,8 +88,8 @@ def parse_weights(
     if missing:
         raise WeightsError(f"Missing weight(s): {', '.join(missing)}")
     total = sum(pp.values())
-    if abs(total - 100) > SUM_TOLERANCE_PP:
-        raise WeightsError(f"Weights must sum to 100 (got {total:g})")
+    if total <= 0:
+        raise WeightsError("At least one weight must be positive")
     return {k: pp[k] / total for k in active}
 
 
@@ -138,6 +145,13 @@ class Store:
         self._add_level("zones", zones, self.metadata["zones"], top_n)
 
         self.layers = {k: (data_dir / f).read_bytes() for k, f in LAYER_FILES.items()}
+
+        # Per zone: analysed cells below the target green share (zone card, Q42)
+        size = self.metadata["zones"]["aggregated_from_cell_size_m"]
+        cells = self.levels[f"cells_{size}"].frame
+        cells = cells[cells["analysed"].astype(bool)]
+        below = cells["green_share"] < self.metadata["trees"]["target_green_share"]
+        self.cells_below_target: dict[int, int] = below.groupby(cells["zone_id"]).sum().to_dict()
         self._scenario = lru_cache(maxsize=SCENARIO_CACHE_SIZE)(self._compute_scenario)
 
     def _add_level(self, name: str, frame: gpd.GeoDataFrame, info: dict, top_n: int) -> None:
@@ -227,6 +241,75 @@ class Store:
             sensitivity_applicable=runs is not None,
             summary=summary,
         )
+
+    # ------------------------------------------------------------------ simulator
+
+    def simulate(
+        self, level: Level, item_id: Any, n_trees: int, weights: Mapping[str, float] | None
+    ) -> dict[str, Any]:
+        """What-if: plant `n_trees` in one analysed cell or zone (Q37).
+
+        Each tree adds its crown area to the green area. Only the green-deficit score changes: it
+        is recomputed with the build's normalisation bounds, then the IPF with the scenario
+        weights. Class and rank are placed against the current scenario (rest of the city
+        unchanged). For a zone, the trees are spread over its analysed cells in proportion to
+        their green deficit, and the zone score is re-aggregated (population-weighted mean).
+        """
+        sc = self.scenario(level, weights)
+        row = level.frame.loc[item_id]
+        if not bool(row["analysed"]):
+            raise ValueError(f"{item_id} is not analysed")
+        crown = float(self.metadata["trees"]["crown_area_m2"])
+        added_m2 = n_trees * crown
+        if level.name == "zones":
+            size = self.metadata["zones"]["aggregated_from_cell_size_m"]
+            cells_level = self.levels[f"cells_{size}"]
+            f = cells_level.frame
+            cells = f[(f["zone_id"] == item_id) & f["analysed"].astype(bool)]
+            bounds = cells_level.info["normalisation"]["green_deficit"]
+            cell_added = spread_trees(n_trees, cells["green_deficit_m2"], cells["area_m2"]) * crown
+            cell_scores = green_deficit_score(
+                (cells["green_m2"] + cell_added) / cells["area_m2"], bounds
+            )
+            residents = cells["residents"].to_numpy(dtype=float)
+            score_after = float((cell_scores * residents).sum() / residents.sum())
+            area = float(row["analysed_area_m2"])
+        else:
+            bounds = level.info["normalisation"]["green_deficit"]
+            area = float(row["area_m2"])
+            green_share = (row["green_m2"] + added_m2) / area
+            score_after = float(green_deficit_score(green_share, bounds))
+
+        w = sc.weights["green_deficit"]
+        score_before = float(row["score_green_deficit"])
+        ipf_before = float(sc.items.at[item_id, "ipf"])
+        ipf_after = ipf_before + w * (score_after - score_before)
+        others = sc.items["ipf"].drop(index=item_id).dropna().to_numpy(dtype=float)
+        green_before = float(row["green_m2"])
+
+        def state(green_m2: float, score: float, ipf: float) -> dict[str, Any]:
+            return {
+                "green_m2": green_m2,
+                "green_share": green_m2 / area,
+                "score_green_deficit": score,
+                "ipf": ipf,
+                "ipf_class": int(np.searchsorted(sc.class_edges, ipf, side="right") + 1),
+                "rank": int((others > ipf).sum() + 1),
+            }
+
+        deficit = float(np.nan_to_num(row["green_deficit_m2"]))
+        return {
+            "weights": sc.weights,
+            "is_default": sc.is_default,
+            "trees": n_trees,
+            "added_green_m2": added_m2,
+            "crown_area_m2": crown,
+            "target_green_share": self.metadata["trees"]["target_green_share"],
+            "trees_estimate": to_json_value(row["trees_new"]),
+            "trees_for_target": math.ceil(deficit / crown),
+            "before": state(green_before, score_before, ipf_before),
+            "after": state(green_before + added_m2, score_after, ipf_after),
+        }
 
     # ------------------------------------------------------------------ GeoJSON
 

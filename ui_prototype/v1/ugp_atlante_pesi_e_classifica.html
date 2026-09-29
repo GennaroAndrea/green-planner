@@ -1,0 +1,50 @@
+<h2 class="sr-only">Pesi regolabili dell'indice IPF e classifica delle zone con barre scomposte nei contributi dei cinque indicatori</h2>
+<style>
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.mono{font-family:var(--font-mono);font-size:11px;color:var(--text-secondary)}
+.serif{font-family:var(--font-voice);font-weight:500}
+.w{display:flex;align-items:center;gap:8px;margin:0 0 4px;font-size:13px}
+.w label{width:104px;color:var(--text-secondary);display:flex;align-items:center;gap:6px}
+.w label i{width:8px;height:8px;border-radius:2px;display:inline-block}
+.w input{flex:1}
+.w span{width:26px;text-align:right;font-family:var(--font-mono);font-size:12px}
+.z{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:0.5px solid var(--border)}
+</style>
+<div style="background:var(--surface-1);border-radius:12px;padding:14px">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin:0 0 8px">
+    <p class="serif" style="margin:0;font-size:18px">Pesi dell'indice</p>
+    <button id="reset" style="font-size:12px;padding:3px 10px">Ripristina</button>
+  </div>
+  <div class="w"><label for="p0"><i style="background:#0F6E56"></i>Inquinamento</label><input type="range" id="p0" min="0" max="100" step="5" value="30"><span id="o0">30</span></div>
+  <div class="w"><label for="p1"><i style="background:#7F77DD"></i>Carenza verde</label><input type="range" id="p1" min="0" max="100" step="5" value="25"><span id="o1">25</span></div>
+  <div class="w"><label for="p2"><i style="background:#D85A30"></i>Traffico</label><input type="range" id="p2" min="0" max="100" step="5" value="20"><span id="o2">20</span></div>
+  <div class="w"><label for="p3"><i style="background:#BA7517"></i>Popolazione</label><input type="range" id="p3" min="0" max="100" step="5" value="15"><span id="o3">15</span></div>
+  <div class="w"><label for="p4"><i style="background:#888780"></i>Industria</label><input type="range" id="p4" min="0" max="100" step="5" value="10"><span id="o4">10</span></div>
+  <p id="tot" class="mono" style="margin:6px 0 14px"></p>
+  <div style="border-top:1.5px solid var(--text-primary);padding-top:10px">
+    <p class="serif" style="margin:0 0 2px;font-size:18px">Zone da servire per prime</p>
+    <p class="mono" style="margin:0 0 4px">La barra mostra da cosa deriva il punteggio</p>
+    <div id="list"></div>
+  </div>
+</div>
+<script>
+var Z=[['Libertà',[91,89,83,71,63],'~480'],['Japigia',[78,75,70,80,85],'~410'],['Murat',[70,60,88,82,30],'~360'],['San Paolo',[60,70,55,65,72],'~300'],['Carrassi',[55,50,65,78,20],'~210'],['Poggiofranco',[40,35,45,55,15],'~120']];
+var D=[30,25,20,15,10],C=['#0F6E56','#7F77DD','#D85A30','#BA7517','#888780'];
+function cls(v){return v>=80?'Alta':v>=60?'Medio-alta':v>=40?'Media':v>=20?'Medio-bassa':'Bassa';}
+function upd(){
+ var w=[],t=0,i;
+ for(i=0;i<5;i++){w[i]=+document.getElementById('p'+i).value;document.getElementById('o'+i).textContent=w[i];t+=w[i];}
+ document.getElementById('tot').textContent='Somma dei pesi: '+t+'. Il calcolo li normalizza sul totale.';
+ var R=Z.map(function(z){var p=[],s=0;for(var k=0;k<5;k++){p[k]=z[1][k]*(t?w[k]/t:0.2);s+=p[k];}return {n:z[0],s:s,p:p,a:z[2]};});
+ R.sort(function(a,b){return b.s-a.s;});
+ var h='';
+ R.forEach(function(r,j){
+  var seg='';for(var k=0;k<5;k++)seg+='<i style="display:block;height:8px;width:'+(r.s?r.p[k]/r.s*100:0)+'%;background:'+C[k]+'"></i>';
+  var sc=Math.round(r.s);
+  h+='<div class="z"><span class="serif" style="width:18px;font-size:18px;color:var(--text-muted)">'+(j+1)+'</span><div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;font-size:14px;margin:0 0 6px"><span style="font-weight:500">'+r.n+'</span><span class="mono">'+r.a+' alberi</span></div><div style="height:8px;background:var(--surface-1);border-radius:2px;overflow:hidden"><div style="display:flex;width:'+sc+'%;height:8px">'+seg+'</div></div></div><div style="text-align:right;min-width:56px"><p class="serif" style="margin:0;font-size:24px;line-height:1">'+sc+'</p><p class="mono" style="margin:2px 0 0;font-size:11px">'+cls(sc)+'</p></div></div>';});
+ document.getElementById('list').innerHTML=h;
+}
+for(var i=0;i<5;i++)document.getElementById('p'+i).addEventListener('input',upd);
+document.getElementById('reset').addEventListener('click',function(){for(var i=0;i<5;i++)document.getElementById('p'+i).value=D[i];upd();});
+upd();
+</script>

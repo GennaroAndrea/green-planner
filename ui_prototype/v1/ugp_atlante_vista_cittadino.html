@@ -1,0 +1,50 @@
+<h2 class="sr-only">Vista cittadino in stile editoriale: sintesi del quartiere Libertà, scala della copertura verde e modulo di segnalazione</h2>
+<style>
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.mono{font-family:var(--font-mono);font-size:11px;color:var(--text-secondary)}
+.serif{font-family:var(--font-voice);font-weight:500}
+.pip{display:inline-block;width:14px;height:6px;border-radius:1px;margin-right:3px}
+</style>
+<div style="background:var(--surface-1);border-radius:12px;padding:14px">
+  <p class="mono" style="margin:0 0 6px">Il verde del tuo quartiere</p>
+  <input type="text" value="Via Manzoni, Bari" aria-label="Indirizzo" style="width:100%;margin:0 0 14px">
+  <div style="border-top:1.5px solid var(--text-primary);padding-top:12px">
+    <p class="mono" style="margin:0 0 4px">Quartiere Libertà</p>
+    <p class="serif" style="margin:0 0 10px;font-size:23px;line-height:1.25">Qui serve più ombra, e servono più alberi.</p>
+    <p style="margin:0 0 16px;font-size:14px;line-height:1.65;color:var(--text-secondary)">Il verde è meno della metà rispetto a quanto previsto dall'obiettivo e la strada è molto trafficata. Nuovi alberi darebbero ombra e ridurrebbero l'esposizione allo smog.</p>
+    <p class="mono" style="margin:0 0 8px">Copertura verde</p>
+    <div style="position:relative;height:8px;background:var(--surface-2);border:0.5px solid var(--border);border-radius:2px;margin:0 0 6px">
+      <div style="position:absolute;left:0;top:0;bottom:0;width:41%;background:#639922;border-radius:2px 0 0 2px"></div>
+      <div style="position:absolute;left:75%;top:-4px;bottom:-4px;width:1.5px;background:var(--text-primary)"></div>
+    </div>
+    <div style="position:relative;height:30px;font-family:var(--font-mono);font-size:11px;color:var(--text-secondary)">
+      <span style="position:absolute;left:0">0%</span>
+      <span style="position:absolute;left:41%;transform:translateX(-50%);color:var(--text-primary)">8,2%</span>
+      <span style="position:absolute;left:75%;transform:translateX(-50%)">obiettivo 15%</span>
+      <span style="position:absolute;right:0">20%</span>
+    </div>
+    <div style="display:flex;border-top:0.5px solid var(--border);border-bottom:0.5px solid var(--border);margin:6px 0 10px">
+      <div style="flex:1;padding:10px 0"><p class="mono" style="margin:0 0 6px">Traffico</p><span><i class="pip" style="background:#993C1D"></i><i class="pip" style="background:#993C1D"></i><i class="pip" style="background:#993C1D"></i><i class="pip" style="background:#993C1D"></i><i class="pip" style="background:var(--border-strong)"></i></span><p style="margin:4px 0 0;font-size:13px">Alto</p></div>
+      <div style="flex:1;padding:10px 0 10px 14px;border-left:0.5px solid var(--border)"><p class="mono" style="margin:0 0 6px">Qualità dell'aria</p><span><i class="pip" style="background:#D85A30"></i><i class="pip" style="background:#D85A30"></i><i class="pip" style="background:#D85A30"></i><i class="pip" style="background:var(--border-strong)"></i><i class="pip" style="background:var(--border-strong)"></i></span><p style="margin:4px 0 0;font-size:13px">Da tenere d'occhio</p></div>
+    </div>
+    <p class="mono" style="margin:0 0 16px">Dati ARPA soggetti a revisione. Il numero di alberi è una stima.</p>
+  </div>
+  <div style="border-top:1.5px solid var(--text-primary);padding-top:12px">
+    <p class="serif" style="margin:0 0 2px;font-size:18px">Segnala un punto per un albero</p>
+    <p class="mono" style="margin:0 0 10px">Aiuta il Comune a scegliere dove piantare.</p>
+    <select style="width:100%;margin:0 0 8px"><option>Marciapiede senza ombra</option><option>Fermata dell'autobus</option><option>Vicino a una scuola</option><option>Aiuola vuota</option></select>
+    <input type="text" id="ind" placeholder="Via Manzoni, angolo via Crisanzio" style="width:100%">
+    <p id="err" style="margin:6px 0 0;font-size:13px;color:var(--text-danger)"></p>
+    <button id="send" style="width:100%;margin:8px 0 0">Invia segnalazione</button>
+    <p id="ok" style="margin:8px 0 0;font-size:13px;color:var(--text-success)"></p>
+  </div>
+</div>
+<script>
+var ind=document.getElementById('ind'),err=document.getElementById('err'),ok=document.getElementById('ok');
+ind.addEventListener('input',function(){err.textContent='';});
+document.getElementById('send').addEventListener('click',function(){
+ ok.textContent='';
+ if(!ind.value.trim()){err.textContent='Indica dove si trova il punto';return;}
+ err.textContent='';ok.textContent='Segnalazione inviata';ind.value='';
+});
+</script>

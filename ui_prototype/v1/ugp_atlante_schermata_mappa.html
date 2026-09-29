@@ -1,0 +1,61 @@
+<h2 class="sr-only">Schermata mappa in stile atlante: Bari a celle con scala sequenziale di priorità e scheda della zona Libertà</h2>
+<style>
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.mono{font-family:var(--font-mono);font-size:11px;color:var(--text-secondary)}
+.serif{font-family:var(--font-voice);font-weight:500}
+.tab{font-size:13px;padding:0 0 6px;color:var(--text-secondary);border-bottom:1.5px solid transparent}
+.lp{display:flex;align-items:center;gap:10px;margin:0 0 9px;font-size:13px}
+.lp .l{width:96px;color:var(--text-secondary)}
+.lp .t{flex:1;height:10px;position:relative}
+.lp .t:before{content:"";position:absolute;left:0;right:0;top:4.5px;height:1px;background:var(--border-strong)}
+.lp .t i{position:absolute;top:0;width:10px;height:10px;border-radius:50%;margin-left:-5px}
+.lp .v{width:24px;text-align:right;font-family:var(--font-mono);font-size:12px}
+</style>
+<div style="background:var(--surface-1);border-radius:12px;padding:14px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;margin:0 0 12px">
+    <div><p class="serif" style="margin:0;font-size:19px;line-height:1.2">Urban Green Planner</p><p class="mono" style="margin:2px 0 0">Bari · dati 2026 · griglia 500 m</p></div>
+    <i class="ti ti-layers-subtract" style="font-size:20px;color:var(--text-secondary)" aria-label="Livelli"></i>
+  </div>
+  <div style="display:flex;gap:16px;border-bottom:0.5px solid var(--border);margin:0 0 10px;overflow-x:auto">
+    <span class="tab" style="color:var(--text-primary);border-bottom-color:#993C1D">Priorità</span><span class="tab">Aria</span><span class="tab">Traffico</span><span class="tab">Verde</span><span class="tab">AIA</span>
+  </div>
+  <svg id="map" viewBox="0 0 336 224" width="100%" role="img" style="display:block;border-radius:4px"><title>Mappa a celle di Bari, scala sequenziale di priorità</title></svg>
+  <div style="display:flex;align-items:center;gap:8px;margin:8px 0 14px">
+    <span class="mono">Bassa</span>
+    <span style="display:flex;flex:1;height:8px"><i style="flex:1;background:#FAEEDA"></i><i style="flex:1;background:#FAC775"></i><i style="flex:1;background:#F0997B"></i><i style="flex:1;background:#D85A30"></i><i style="flex:1;background:#993C1D"></i></span>
+    <span class="mono">Alta</span>
+    <span class="mono" style="margin-left:6px"><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#639922;margin-right:4px"></i>Verde</span>
+  </div>
+  <div style="border-top:1.5px solid var(--text-primary);padding-top:12px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin:0 0 12px">
+      <div><p class="serif" style="margin:0;font-size:18px">Zona Libertà</p><p class="mono" style="margin:2px 0 0">Priorità alta · classe 5 di 5</p></div>
+      <p class="serif" style="margin:0;font-size:38px;line-height:1;color:#993C1D">83<span style="font-size:13px;color:var(--text-secondary);font-family:var(--font-mono)"> /100</span></p>
+    </div>
+    <p class="mono" style="margin:0 0 8px">Perché questa zona è prioritaria</p>
+    <div class="lp"><span class="l">Inquinamento</span><span class="t"><i style="left:91%;background:#993C1D"></i></span><span class="v">91</span></div>
+    <div class="lp"><span class="l">Carenza verde</span><span class="t"><i style="left:89%;background:#993C1D"></i></span><span class="v">89</span></div>
+    <div class="lp"><span class="l">Traffico</span><span class="t"><i style="left:83%;background:#993C1D"></i></span><span class="v">83</span></div>
+    <div class="lp"><span class="l">Popolazione</span><span class="t"><i style="left:71%;background:#D85A30"></i></span><span class="v">71</span></div>
+    <div class="lp"><span class="l">Industria</span><span class="t"><i style="left:63%;background:#D85A30"></i></span><span class="v">63</span></div>
+    <div style="display:flex;margin:14px 0 10px;border-top:0.5px solid var(--border);border-bottom:0.5px solid var(--border)">
+      <div style="flex:1;padding:10px 0"><p class="mono" style="margin:0">Verde attuale → target</p><p class="serif" style="margin:2px 0 0;font-size:20px">8,2% → 15%</p></div>
+      <div style="flex:1;padding:10px 0 10px 14px;border-left:0.5px solid var(--border)"><p class="mono" style="margin:0">Nuovi alberi (stima)</p><p class="serif" style="margin:2px 0 0;font-size:20px">~480</p></div>
+    </div>
+    <p class="mono" style="margin:0">Stima del modello. Dati ARPA soggetti a revisione.</p>
+  </div>
+</div>
+<script>
+var s=document.getElementById('map'),W=42,H=32,out='';
+var parks=[[4,3],[1,5],[6,4],[3,1]];
+for(var r=0;r<7;r++)for(var c=0;c<8;c++){
+ var sea=r<(c-2)*0.6,sel=(c==2&&r==3),f;
+ if(sea)f='var(--bg-accent)';
+ else{var a=92-16*Math.hypot(c-2,(r-3)*1.1),b=72-15*Math.hypot(c-5,(r-5)*1.1),v=Math.max(a,b,12)+6*Math.sin(c*3+r*5);
+  f=v>=80?'#993C1D':v>=60?'#D85A30':v>=40?'#F0997B':v>=20?'#FAC775':'#FAEEDA';}
+ out+='<rect x="'+(c*W)+'" y="'+(r*H)+'" width="'+W+'" height="'+H+'" fill="'+f+'"/>';
+}
+out+='<path d="M0 118 L336 92 M150 224 L190 40" stroke="var(--surface-1)" stroke-width="3" opacity="0.8" fill="none"/>';
+parks.forEach(function(p){out+='<circle cx="'+(p[0]*W+W/2)+'" cy="'+(p[1]*H+H/2)+'" r="8" fill="#639922" stroke="var(--surface-1)" stroke-width="1.5"/>';});
+out+='<rect x="'+(2*W+1.5)+'" y="'+(3*H+1.5)+'" width="'+(W-3)+'" height="'+(H-3)+'" fill="none" stroke="var(--text-primary)" stroke-width="2.5"/>';
+s.insertAdjacentHTML('beforeend',out);
+</script>

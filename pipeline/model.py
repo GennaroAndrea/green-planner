@@ -111,3 +111,30 @@ def tree_estimate(
         {"green_deficit_m2": deficit, "plantable_m2": plantable, "trees_new": trees},
         index=area_m2.index,
     )
+
+
+# ---------------------------------------------------------------------------
+# Tree simulator (Q37): new trees add their crown area to the green area
+# ---------------------------------------------------------------------------
+
+
+def green_deficit_score(green_share: np.ndarray, bounds: Mapping[str, float]) -> np.ndarray:
+    """Green-deficit score (0–100) from the green share, with the build's normalisation bounds.
+
+    Same formula as `robust_minmax` (linear) followed by `100 − score`.
+    """
+    x = np.asarray(green_share, dtype=float)
+    lo, hi = bounds["lower"], bounds["upper"]
+    if hi <= lo:
+        score = np.where(x > lo, 100.0, 0.0)
+    else:
+        score = np.clip((x - lo) / (hi - lo), 0, 1) * 100
+    return 100 - score
+
+
+def spread_trees(n_trees: float, deficit_m2: np.ndarray, area_m2: np.ndarray) -> np.ndarray:
+    """Split trees planted in a zone over its cells, in proportion to each cell's green deficit
+    (by area when no cell has a deficit). Fractional trees are fine: only areas are derived."""
+    deficit = np.nan_to_num(np.asarray(deficit_m2, dtype=float))
+    share = deficit if deficit.sum() > 0 else np.asarray(area_m2, dtype=float)
+    return n_trees * share / share.sum()
