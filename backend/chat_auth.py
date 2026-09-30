@@ -11,7 +11,7 @@ Only the chat is gated: the map and every other /api endpoint stay public.
 
 Configuration (environment, e.g. a local `.env` passed to uvicorn with `--env-file .env`):
 - GREEN_PLANNER_ADMIN_SECRET: required. Without it the chat is unavailable and the admin API
-  answers 404 (the Render deploy runs this way, Q54: chat on the laptop only).
+  answers 404 (e.g. the Docker image, which ships without it; Q54: chat on the laptop only).
 - GREEN_PLANNER_CHAT_DB: SQLite file (default data/interim/chat_auth.sqlite, gitignored).
 
 Stored secrets are never usable as-is: codes are kept as an HMAC keyed with the admin secret

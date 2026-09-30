@@ -11,7 +11,7 @@ Documentation (read the relevant ones before starting a task):
 - `docs/artefacts.md`: schema of the pipeline outputs in `data/processed/` (what the backend loads).
 - `docs/handoff/phase_<N>.md`: review + handoff written at the end of each phase. **Start from the latest one.**
 - `data/manual/README.md`: sources of the hand-transcribed data.
-- `docs/demo_script.md`: the demo script (Italian, Q52). `deploy/README.md`: the committed data snapshot for the Render deploy (Q51).
+- `docs/demo_script.md`: the demo script (Italian, Q52). `deploy/README.md`: the committed data snapshot (Q51).
 
 ## Commands
 
@@ -27,11 +27,12 @@ uv run uvicorn backend.main:app --reload  # backend on :8000 (serves frontend/di
 cd frontend && npm run dev                # frontend dev server (proxies /api to :8000)
 cd frontend && npm run build && npm run lint
 make demo                                 # demo: build + backend on :8080 + ngrok (make demo-local: no ngrok)
-make snapshot                             # after `pipeline build`: refresh deploy/data/ (Render deploy)
+make snapshot                             # after `pipeline build`: refresh deploy/data/ (then commit)
 make cert && make demo HTTPS=1            # optional: backend over HTTPS with a self-signed cert in tls/
 ./chat status | codes N | sessions | revoke-all | disable   # chat access admin (needs a running demo)
 ```
 
+- CI/CD (Q60): `.github/workflows/` runs Test on every push; a green `main` builds the Docker image and pushes it to GHCR. There is no automatic deploy. Keep `uv run ruff format --check .` clean, since CI fails on it.
 - City config (data sources + all model parameters): `config/bari.yaml`.
 - `data/raw/` is gitignored (except `manifest.json`). `data/manual/` holds hand-transcribed data and is committed; document the source of each file in its README.
 - Some PA hosts don't send their intermediate TLS certificate. Add it to `config/certs/intermediates.pem`. Never disable verification.

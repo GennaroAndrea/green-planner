@@ -15,8 +15,8 @@ demo-local:
 cert:
 	scripts/make_cert.sh $(NAMES)
 
-# Copy the artefacts the backend loads into deploy/data/ (committed; used by the Render
-# deploy and as the data fallback of scripts/demo.sh). Run after every `pipeline build`.
+# Copy the artefacts the backend loads into deploy/data/ (committed; used by the Docker image
+# and as the data fallback of scripts/demo.sh). Run after every `pipeline build`.
 snapshot:
 	@test -f data/processed/metadata.json || { echo "run 'uv run python -m pipeline build' first"; exit 1; }
 	rm -rf deploy/data && mkdir -p deploy/data
@@ -24,7 +24,7 @@ snapshot:
 	   data/processed/layer_*.geojson deploy/data/
 	@du -sh deploy/data
 
-# The Render image, built and run locally (http://localhost:8080)
+# The Docker image (the one CI pushes to GHCR), built and run locally (http://localhost:8080)
 docker-build:
 	docker build -t green-planner .
 

@@ -71,7 +71,7 @@ else
 fi
 if [[ "$DATA_DIR" == "$ROOT/data/processed" && -f deploy/data/metadata.json ]] \
   && ! cmp -s "$DATA_DIR/metadata.json" deploy/data/metadata.json; then
-  echo "warning: deploy/data/ differs from data/processed/: the Render fallback is out of date ('make snapshot')"
+  echo "warning: deploy/data/ differs from data/processed/: the committed snapshot is out of date ('make snapshot')"
 fi
 
 step "Frontend build"

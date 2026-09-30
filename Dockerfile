@@ -1,5 +1,5 @@
-# Render fallback deploy (Q51): frontend build, then the FastAPI backend serving it with the
-# committed data snapshot (deploy/data/). Render sets $PORT; locally it defaults to 8080.
+# The app as one image (built and pushed to GHCR by CI, Q60): frontend build, then the FastAPI
+# backend serving it with the committed data snapshot (deploy/data/). Port: $PORT, default 8080.
 
 FROM node:24-slim AS frontend
 WORKDIR /app/frontend
@@ -13,7 +13,8 @@ COPY --from=ghcr.io/astral-sh/uv:0.12.20 /uv /usr/local/bin/uv
 WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+# --no-cache: keep uv's download cache (~670 MB) out of the image
+RUN uv sync --frozen --no-dev --no-install-project --no-cache
 COPY backend/ backend/
 COPY pipeline/ pipeline/
 COPY deploy/data/ deploy/data/

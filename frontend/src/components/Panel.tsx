@@ -21,7 +21,7 @@ const TABS: { key: PanelTab; label: string }[] = [
 
 export function PanelTabs({ className }: { className?: string }) {
   const { panelTab, setPanelTab, selection } = useApp()
-  // The chat tab exists only where the chat is configured (not on the Render fallback, Q54)
+  // The chat tab exists only where the chat is configured (the demo laptop only, Q54)
   const chat = useFetch<ChatStatus>(api.chatStatus)
   const tabs = TABS.filter((t) => t.key !== 'chat' || chat.data?.available)
   return (

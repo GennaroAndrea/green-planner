@@ -6,9 +6,8 @@
 
 1. `make demo` sul portatile (dati → build → backend su :8080 → ngrok). Attendere la riga `started tunnel`.
 2. Aprire **https://green-planner.ngrok.io** sul portatile **e** su un telefono (rete mobile, non il Wi-Fi della sala).
-3. **Riserva Render**: aprire l'URL Render una volta per svegliarlo (piano gratuito: si addormenta dopo 15 minuti senza traffico e impiega circa un minuto a ripartire). Lasciare la scheda aperta.
-4. Ricaricare la pagina sul portatile: vista **Quartieri**, scheda **Priorità**, nessuna zona selezionata, pesi predefiniti.
-5. Tema chiaro per il proiettore (pulsante luna/sole in alto a destra).
+3. Ricaricare la pagina sul portatile: vista **Quartieri**, scheda **Priorità**, nessuna zona selezionata, pesi predefiniti.
+4. Tema chiaro per il proiettore (pulsante luna/sole in alto a destra).
 
 ## Copione
 
@@ -47,7 +46,7 @@ Passare a **Celle 250 m**: la stessa analisi su 1.127 celle, per decidere via pe
 > "In totale stimiamo circa **33.000 alberi** nelle celle abitate dei quartieri, più 12.345 in aree non residenziali. Il metodo è configurabile per altri comuni: Copertino e Lecce sono i prossimi."
 
 ## Se qualcosa va storto
-- **ngrok non risponde**: usare l'URL Render (già svegliato). Stessi dati (snapshot `deploy/data/`).
+- **ngrok non risponde**: fermare (Ctrl+C), lanciare `make demo-local` e proiettare http://localhost:8080 dal portatile. Il telefono non potrà aprire l'app.
 - **Niente internet in sala**: `make demo-local` e proiettare http://localhost:8080. Serve comunque internet per lo sfondo della mappa (CARTO); senza, i quartieri restano visibili su fondo vuoto.
 
 ## Domande probabili della giuria

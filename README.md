@@ -21,7 +21,8 @@ backend/    FastAPI app
 frontend/   React + TypeScript + Vite app (UI in Italian)
 tests/      pytest suite
 scripts/    demo launcher
-deploy/     committed data snapshot for the Render deploy
+deploy/     committed data snapshot (Docker image, clean-start fallback, tests)
+.github/    CI workflows: test, build and publish (GHCR)
 ```
 
 ## Setup
@@ -91,22 +92,29 @@ DEMO_HOST=0.0.0.0 make demo-local HTTPS=1  # also reachable from other devices o
 
 With `HTTPS=1`, both demo targets check the certificate at startup and replace it (new certificate and new key) when it is missing, expires within a day, or doesn't cover the laptop's current LAN address, so moving to another network needs no manual step. Plain HTTP stays the default. Browsers show a warning for a self-signed certificate until it is trusted (import `tls/cert.pem`). The launcher's health checks and the admin CLI verify the certificate against `tls/cert.pem` (no verification is ever disabled), and `./chat` finds the HTTPS server by itself.
 
-### Fallback deploy on Render
+### Docker image and CI
 
-The same app runs as a Docker image on Render's free plan (`Dockerfile`, `render.yaml`), as a backup if the laptop or ngrok fails. Render builds from git, so the artefacts the backend loads are committed in `deploy/data/` (see [`deploy/README.md`](deploy/README.md)):
+The same app also runs as one Docker image (`Dockerfile`: frontend build, then the backend serving it). Its data is the committed snapshot in `deploy/data/` (see [`deploy/README.md`](deploy/README.md)), because `data/processed/` is gitignored:
 
 ```bash
 make snapshot      # after every `pipeline build`: copy the artefacts into deploy/data/, then commit
-make docker-build && make docker-run    # test the image locally on http://localhost:8080
+make docker-build && make docker-run    # build and run the image locally on http://localhost:8080
 ```
 
-To set it up once: in the Render dashboard choose **New → Blueprint** and select this repository; `render.yaml` does the rest, and every push to `main` redeploys. The free service sleeps after 15 minutes without traffic and takes about a minute to wake, so open it a few minutes before the demo.
+**CI** (GitHub Actions, Q60), two workflows in `.github/workflows/`:
+
+| Workflow | Runs | Does |
+|---|---|---|
+| `test.yml` (**Test**) | on every push (any branch), or by hand | ruff check + format check, pytest, frontend lint + build |
+| `build.yml` (**Build and publish**) | after a green Test on `main`, or by hand (any branch) | builds the image of the tested commit and pushes it to GHCR (private): `ghcr.io/gennaroandrea/green-planner:<commit SHA>`, plus `:latest` for `main` |
+
+Nothing is deployed automatically. To run a published image elsewhere: `docker login ghcr.io` (a classic GitHub token with `read:packages`), then `docker run -p 8080:8080 ghcr.io/gennaroandrea/green-planner:latest`.
 
 ## AI chat ("Chiedi")
 
 A third panel tab, **Chiedi**, answers questions about the project in Italian: the method and its formulas, the decisions, the data, the Bari results and how to use the app (FR-54, Q53, Q56). It uses Claude Haiku 4.5 through the Claude API, with thinking off and streamed answers (`backend/chat.py`). The model reads `docs/methodology.md` and gets the numbers from three read-only tools (ranking, quartiere card, simulator, all at default weights); it declines unrelated questions. After each answer, a check looks for numbers that are neither in the tool results, the methodology or the question, nor the correct result of an operation written in the answer; if it finds any, the answer gets a visible warning (`backend/chat_numbers.py`). The conversation memory (last 10 exchanges) lives in the server process. Answers are rendered as Markdown with `react-markdown` + `remark-gfm` (tables included; raw HTML is never rendered) and LaTeX with KaTeX (`$…$`, `$$…$$`; Italian decimal commas are fixed automatically, and the number check reads LaTeX too), and the chat code is loaded only when the tab is first opened, so the map's first load is unchanged.
 
-The chat runs on the demo laptop only (Render has no persistent storage for the access codes, Q54): copy `.env.example` to `.env` and set `GREEN_PLANNER_ADMIN_SECRET` and `ANTHROPIC_API_KEY`. `make demo` loads `.env`; without both, the tab is hidden.
+The chat runs on the demo laptop only (Q54): copy `.env.example` to `.env` and set `GREEN_PLANNER_ADMIN_SECRET` and `ANTHROPIC_API_KEY`. `make demo` loads `.env`; without both, the tab is hidden.
 
 **Test mode** (for trying the UI without API credit): with `GREEN_PLANNER_CHAT_TEST_MODE=1` in `.env`, questions that start with `/test` get canned answers (`backend/chat_test.py`: six answers that cycle, each after a real tool call, streamed at about the model's pace, number-checked and charged ~$0.006 on the session budget; the sixth has an invented number to show the warning). Other questions still go to the model. Keep it off for the demo.
 
