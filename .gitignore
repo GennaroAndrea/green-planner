@@ -21,3 +21,7 @@ data/processed/*
 .vscode/
 .idea/
 .DS_Store
+
+# Secrets (chat: Anthropic API key, admin secret) — see .env.example
+.env
+tls/

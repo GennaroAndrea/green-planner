@@ -21,6 +21,10 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend import schemas
+from backend.chat import client_from_env as chat_client_from_env
+from backend.chat import install as install_chat
+from backend.chat_auth import auth_from_env
+from backend.chat_auth import install as install_chat_auth
 from backend.store import LAYER_FILES, Level, Scenario, Store, WeightsError, parse_weights
 from backend.store import to_json_value as jv
 from pipeline.model import CLASS_KEYS, top_drivers
@@ -41,6 +45,7 @@ ZONE_STATS = ("rione", "covered", "cells_analysed", "cells_residential", "analys
               "residents", "vulnerable", "density_km2", "veg_m2", "veg_share", "green_m2",
               "green_share")  # fmt: skip
 GEOJSON = "application/geo+json"
+_FROM_ENV = object()  # create_app default: chat access configured from the environment
 
 WeightsParam = Annotated[
     str | None,
@@ -54,8 +59,16 @@ GridParam = Annotated[int | None, Query(description="Cell size in metres (cells 
 TreesParam = Annotated[int, Query(ge=0, le=1_000_000, description="New trees to plant")]
 
 
-def create_app(data_dir: Path | None = None) -> FastAPI:
+def create_app(
+    data_dir: Path | None = None, chat_auth: Any = _FROM_ENV, chat_client: Any = _FROM_ENV
+) -> FastAPI:
+    """`chat_auth` (access store, Q54) and `chat_client` (Claude client, Q53) default to the
+    environment's configuration; `None` for no chat."""
     data_dir = data_dir or Path(os.environ.get("GREEN_PLANNER_DATA_DIR", DEFAULT_DATA_DIR))
+    if chat_auth is _FROM_ENV:
+        chat_auth = auth_from_env()
+    if chat_client is _FROM_ENV:
+        chat_client = chat_client_from_env()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -66,6 +79,8 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.add_middleware(CORSMiddleware, allow_origins=DEV_ORIGINS, allow_methods=["GET"])
     _add_routes(app)
+    install_chat_auth(app, chat_auth)
+    install_chat(app, chat_client)
     # Mounted last so /api routes take precedence. One origin means a single ngrok tunnel.
     if FRONTEND_DIST.is_dir():
         app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")

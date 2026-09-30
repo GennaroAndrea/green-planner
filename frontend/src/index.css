@@ -181,3 +181,15 @@ input[type="range"].range::-moz-range-thumb {
   font-size: 18px;
   color: var(--text-secondary);
 }
+
+/* Chat answers: LaTeX (KaTeX, Q59). Displayed formulas scroll sideways instead of overflowing
+   the narrow panel. */
+.chat-md .katex {
+  font-size: 1.05em;
+}
+.chat-md .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 0;
+  padding: 0.25rem 0;
+}

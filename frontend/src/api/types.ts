@@ -228,3 +228,19 @@ export interface Simulation extends Weights {
   before: SimulationState
   after: SimulationState
 }
+
+/** GET /api/chat/status (backend/chat_auth.py ChatStatus). */
+export interface ChatStatus {
+  available: boolean
+  authenticated: boolean
+  expires_at: string | null
+  budget_usd: number | null
+  spent_usd: number | null
+}
+
+/** GET /api/chat/history item. */
+export interface ChatExchange {
+  question: string
+  answer: string
+  unverified: string[]
+}

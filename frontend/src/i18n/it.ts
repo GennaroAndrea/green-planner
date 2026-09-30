@@ -120,3 +120,34 @@ export function detailTitle(d: Pick<Detail, 'level' | 'grid' | 'zone'>): string 
   if (d.level === 'zone') return d.zone?.name ?? 'Quartiere'
   return `Cella ${d.grid} m${d.zone?.name ? ` · ${d.zone.name}` : ''}`
 }
+
+// AI chat "Chiedi" (FR-54, Q56)
+export const CHAT = {
+  tab: 'Chiedi',
+  title: 'Chiedi al progetto',
+  intro:
+    'Fai una domanda sul progetto: come si calcola l’indice, perché un quartiere è prioritario, da dove vengono i dati, quanti alberi servono.',
+  codeLabel: 'Codice di accesso',
+  codeHint: 'Per usare la chat serve un codice personale (es. K7QM-4RXP). Ogni codice vale una volta.',
+  codeSubmit: 'Entra',
+  codeInvalid: 'Codice non valido, scaduto o già usato.',
+  unavailable: 'La chat non è disponibile in questo momento.',
+  placeholder: 'Scrivi una domanda…',
+  send: 'Invia',
+  thinking: 'Sto pensando…',
+  newChat: 'Nuova conversazione',
+  credit: (share: string) => `Credito usato: ${share}`,
+  creditOver: 'Credito esaurito: non puoi fare altre domande con questo codice.',
+  busy: 'Attendi la risposta alla domanda precedente.',
+  expired: 'La sessione è scaduta o è stata chiusa. Inserisci un nuovo codice.',
+  error: 'Si è verificato un errore. Riprova.',
+  unverified: (nums: string[]) =>
+    `Attenzione: alcuni numeri di questa risposta non sono verificati (${nums.join(', ')}). Controlla i valori nella scheda del quartiere o in “Metodologia e fonti”.`,
+  disclaimer:
+    'Risposte generate da un modello di intelligenza artificiale (Claude di Anthropic): possono contenere errori. I dati di riferimento sono nella scheda e in “Metodologia e fonti”.',
+  examples: [
+    'Perché Madonnella è al primo posto?',
+    'Come si calcola l’IPF? Mostrami la formula.',
+    'Quanti alberi servono a Libertà e cosa cambierebbe piantandoli?',
+  ],
+}

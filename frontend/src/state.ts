@@ -7,7 +7,7 @@ export interface Selection {
   id: string
 }
 
-export type PanelTab = 'detail' | 'weights'
+export type PanelTab = 'detail' | 'weights' | 'chat'
 
 /** What the map shows: neighbourhoods, or one of the two grids. */
 export type View = 'zone' | GridSize

@@ -1,20 +1,32 @@
+import { lazy, Suspense } from 'react'
 import { useApp, type PanelTab } from '../state'
-import { SHORT_DISCLAIMER } from '../i18n/it'
+import { api } from '../api/client'
+import type { ChatStatus } from '../api/types'
+import { CHAT, SHORT_DISCLAIMER } from '../i18n/it'
+import { useFetch } from '../lib/hooks'
 import DetailPanel from './DetailPanel'
+import { Spinner } from './ui'
 import Simulator from './Simulator'
 import WeightsRanking from './WeightsRanking'
 import { cx } from '../lib/ui'
 
+// Loaded on first use: the chat and its Markdown renderer aren't needed for the map (NFR-04)
+const Chat = lazy(() => import('./Chat'))
+
 const TABS: { key: PanelTab; label: string }[] = [
   { key: 'detail', label: 'Zona' },
   { key: 'weights', label: 'Pesi e classifica' },
+  { key: 'chat', label: CHAT.tab },
 ]
 
 export function PanelTabs({ className }: { className?: string }) {
   const { panelTab, setPanelTab, selection } = useApp()
+  // The chat tab exists only where the chat is configured (not on the Render fallback, Q54)
+  const chat = useFetch<ChatStatus>(api.chatStatus)
+  const tabs = TABS.filter((t) => t.key !== 'chat' || chat.data?.available)
   return (
     <div role="tablist" aria-label="Pannello" className={cx('flex gap-5 border-b border-line', className)}>
-      {TABS.map((t) => (
+      {tabs.map((t) => (
         <button
           key={t.key}
           role="tab"
@@ -37,6 +49,12 @@ export function PanelTabs({ className }: { className?: string }) {
 export function PanelBody() {
   const { panelTab, simulating } = useApp()
   if (panelTab === 'weights') return <WeightsRanking />
+  if (panelTab === 'chat')
+    return (
+      <Suspense fallback={<Spinner />}>
+        <Chat />
+      </Suspense>
+    )
   return simulating ? <Simulator /> : <DetailPanel />
 }
 

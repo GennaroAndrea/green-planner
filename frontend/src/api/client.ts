@@ -53,4 +53,8 @@ export const api = {
   sensitivity: (level: Level, grid: GridSize, w: string | null) =>
     `/api/sensitivity${query({ level, grid: level === 'cell' ? grid : null, weights: w })}`,
   layer: (key: string) => `/api/layers/${key}`,
+  chatStatus: '/api/chat/status',
+  chatSession: '/api/chat/session',
+  chat: '/api/chat',
+  chatHistory: '/api/chat/history',
 }

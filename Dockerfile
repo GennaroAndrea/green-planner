@@ -17,6 +17,7 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY backend/ backend/
 COPY pipeline/ pipeline/
 COPY deploy/data/ deploy/data/
+COPY docs/methodology.md docs/methodology.md
 COPY --from=frontend /app/frontend/dist frontend/dist
 ENV PATH=/app/.venv/bin:$PATH GREEN_PLANNER_DATA_DIR=/app/deploy/data
 EXPOSE 8080

@@ -21,6 +21,7 @@ dependencies = [
     "uvicorn[standard]>=0.30",
     "pydantic>=2.7",
     "rasterio>=1.4",
+    "anthropic>=1.9.0",
 ]
 
 [dependency-groups]
@@ -45,3 +46,6 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff.lint.per-file-ignores]
+"backend/chat_test.py" = ["E501"]  # canned Markdown/LaTeX answers, kept readable as written

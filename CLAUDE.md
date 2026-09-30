@@ -28,6 +28,8 @@ cd frontend && npm run dev                # frontend dev server (proxies /api to
 cd frontend && npm run build && npm run lint
 make demo                                 # demo: build + backend on :8080 + ngrok (make demo-local: no ngrok)
 make snapshot                             # after `pipeline build`: refresh deploy/data/ (Render deploy)
+make cert && make demo HTTPS=1            # optional: backend over HTTPS with a self-signed cert in tls/
+./chat status | codes N | sessions | revoke-all | disable   # chat access admin (needs a running demo)
 ```
 
 - City config (data sources + all model parameters): `config/bari.yaml`.

@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Short form of the chat admin CLI: ./chat status | codes N | sessions | revoke ID | revoke-all
+# | disable | enable  (see backend/admin.py; `./chat --help` lists the options)
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
+export PATH="$HOME/.local/bin:$PATH"
+exec uv run --quiet --frozen python -m backend.admin "$@"

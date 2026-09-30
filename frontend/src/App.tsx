@@ -57,14 +57,16 @@ function Layout({ dark, toggleTheme }: { dark: boolean; toggleTheme: () => void 
   const url = app.view === 'zone' ? api.zones(app.wParam) : api.cells(app.view, app.wParam)
   const map = useFetch<MapCollection>(url)
 
-  // A new selection (map tap, ranking click) or the weights tab opens the sheet/panel.
+  // A new selection (map tap, ranking click) or the weights tab opens the sheet/panel; the chat
+  // tab opens it fully, since it needs room for the conversation and the keyboard.
   // Adjusted during render (React's pattern for state derived from a change), not in an effect.
   const { selection, panelTab } = app
   const [seen, setSeen] = useState({ selection, panelTab })
   if (seen.selection !== selection || seen.panelTab !== panelTab) {
     setSeen({ selection, panelTab })
-    if ((selection && seen.selection !== selection) || (panelTab === 'weights' && seen.panelTab !== panelTab)) {
-      if (snap === 'peek') setSnap('half')
+    if ((selection && seen.selection !== selection) || ((panelTab === 'weights' || panelTab === 'chat') && seen.panelTab !== panelTab)) {
+      if (panelTab === 'chat' && seen.panelTab !== panelTab) setSnap('full')
+      else if (snap === 'peek') setSnap('half')
       if (selection) setCollapsed(false)
     }
   }
