@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "city": "bari",
-  "built_at": "2026-09-29T20:33:13.869699+00:00",
+  "built_at": "2026-10-01T10:17:21.179735+00:00",
   "indicators": {
     "all": [
       "pollution",
@@ -75,12 +75,122 @@
   },
   "grid": {
     "cell_sizes_m": [
+      50,
       250,
       500
     ],
-    "default_cell_size_m": 250
+    "default_cell_size_m": 50
   },
   "grids": {
+    "50": {
+      "cell_size_m": 50,
+      "cells": 47484,
+      "cells_analysed": 24527,
+      "residents_in_analysed_cells": 260855,
+      "normalisation": {
+        "pollution": {
+          "lower": 0.8974161505353636,
+          "upper": 1.1037354189090487,
+          "log": false
+        },
+        "green_deficit": {
+          "lower": 0.0,
+          "upper": 0.4,
+          "log": false
+        },
+        "traffic": {
+          "lower": 0.0,
+          "upper": 46078.1786981319,
+          "log": true
+        },
+        "population": {
+          "lower": 0.0,
+          "upper": 29981.378659595477,
+          "log": true
+        }
+      },
+      "class_edges": [
+        46.185119658714115,
+        60.59462637210167,
+        71.32003386114158
+      ],
+      "sensitivity": {
+        "n": 24527,
+        "top_n": 2453,
+        "spearman_mean": 0.9888,
+        "spearman_p5": 0.9708,
+        "top_n_overlap_mean": 2344.41,
+        "top_n_overlap_min": 2059,
+        "robust_share": 0.7511,
+        "robust_share_top_n": 0.9058,
+        "one_at_a_time": [
+          {
+            "indicator": "pollution",
+            "delta_pp": -10,
+            "weight": 0.1222,
+            "top_n_kept": 2267,
+            "top_n": 2453,
+            "spearman": 0.9898
+          },
+          {
+            "indicator": "pollution",
+            "delta_pp": 10,
+            "weight": 0.3222,
+            "top_n_kept": 2268,
+            "top_n": 2453,
+            "spearman": 0.9877
+          },
+          {
+            "indicator": "green_deficit",
+            "delta_pp": -10,
+            "weight": 0.2333,
+            "top_n_kept": 2379,
+            "top_n": 2453,
+            "spearman": 0.9842
+          },
+          {
+            "indicator": "green_deficit",
+            "delta_pp": 10,
+            "weight": 0.4333,
+            "top_n_kept": 2392,
+            "top_n": 2453,
+            "spearman": 0.9879
+          },
+          {
+            "indicator": "traffic",
+            "delta_pp": -10,
+            "weight": 0.1222,
+            "top_n_kept": 2364,
+            "top_n": 2453,
+            "spearman": 0.9762
+          },
+          {
+            "indicator": "traffic",
+            "delta_pp": 10,
+            "weight": 0.3222,
+            "top_n_kept": 2312,
+            "top_n": 2453,
+            "spearman": 0.9813
+          },
+          {
+            "indicator": "population",
+            "delta_pp": -10,
+            "weight": 0.1222,
+            "top_n_kept": 2266,
+            "top_n": 2453,
+            "spearman": 0.9826
+          },
+          {
+            "indicator": "population",
+            "delta_pp": 10,
+            "weight": 0.3222,
+            "top_n_kept": 2313,
+            "top_n": 2453,
+            "spearman": 0.984
+          }
+        ]
+      }
+    },
     "250": {
       "cell_size_m": 250,
       "cells": 2006,
@@ -88,8 +198,8 @@
       "residents_in_analysed_cells": 260079,
       "normalisation": {
         "pollution": {
-          "lower": 0.8972540555224233,
-          "upper": 1.1012922878577316,
+          "lower": 0.8972540555224168,
+          "upper": 1.1012922878577318,
           "log": false
         },
         "green_deficit": {
@@ -99,7 +209,7 @@
         },
         "traffic": {
           "lower": 0.0,
-          "upper": 44203.20632744317,
+          "upper": 44203.20632746445,
           "log": true
         },
         "population": {
@@ -109,9 +219,9 @@
         }
       },
       "class_edges": [
-        46.44497357758482,
-        60.18761760310845,
-        75.58085990620036
+        46.444973577585465,
+        60.18761760310957,
+        75.58085990619985
       ],
       "sensitivity": {
         "n": 1127,
@@ -197,8 +307,8 @@
       "residents_in_analysed_cells": 259683,
       "normalisation": {
         "pollution": {
-          "lower": 0.8987921616977304,
-          "upper": 1.1010677375482496,
+          "lower": 0.8987921616977343,
+          "upper": 1.10106773754825,
           "log": false
         },
         "green_deficit": {
@@ -208,7 +318,7 @@
         },
         "traffic": {
           "lower": 0.0,
-          "upper": 45619.01717602987,
+          "upper": 45619.017176030924,
           "log": true
         },
         "population": {
@@ -218,9 +328,9 @@
         }
       },
       "class_edges": [
-        46.307341818269,
-        60.48757221216485,
-        75.68213168378156
+        46.30734181826859,
+        60.48757221216632,
+        75.68213168378145
       ],
       "sensitivity": {
         "n": 315,
@@ -305,9 +415,9 @@
     "zones_analysed": 16,
     "aggregated_from_cell_size_m": 250,
     "class_edges": [
-      70.29730323196506,
-      79.2885346117839,
-      87.5454560639591
+      70.29730323196519,
+      79.28853461178278,
+      87.54545606395952
     ],
     "sensitivity": {
       "n": 16,
@@ -483,7 +593,7 @@
     "green_areas": {
       "status": "ok",
       "files": 2,
-      "downloaded_at": "2026-09-29T17:12:21.681592+00:00",
+      "downloaded_at": "2026-10-01T09:53:50.336496+00:00",
       "urls": [
         "https://opendata.comune.bari.it/dataset/16d4a848-0b1c-4451-9c08-c4cb3bbe2bda/resource/4f25ee7e-1c81-401e-aa2d-e86ec89bf904/download/aree-verdi.csv",
         "https://opendata.comune.bari.it/dataset/16d4a848-0b1c-4451-9c08-c4cb3bbe2bda/resource/ccae6ba8-6e9a-4548-b65b-5589de40f8ff/download/aree-verdi-2.zip"
@@ -492,7 +602,7 @@
     "traffic_flows": {
       "status": "ok",
       "files": 11,
-      "downloaded_at": "2026-09-29T17:12:25.974593+00:00",
+      "downloaded_at": "2026-10-01T10:05:51.350628+00:00",
       "urls": [
         "https://opendata.comune.bari.it/dataset/2199ef8c-d5bc-41a3-bee0-d0b3a413717d/resource/00ee43c5-bade-44db-a8f1-8a439a504414/download/vehiclesdaily_202606.csv",
         "https://opendata.comune.bari.it/dataset/2199ef8c-d5bc-41a3-bee0-d0b3a413717d/resource/17ddafc2-ced4-48d1-993c-9b4a0340eb50/download/vehiclesdaily_202512.csv",
@@ -510,7 +620,7 @@
     "traffic_controllers": {
       "status": "ok",
       "files": 11,
-      "downloaded_at": "2026-09-29T17:12:30.506594+00:00",
+      "downloaded_at": "2026-10-01T09:54:04.751618+00:00",
       "urls": [
         "https://opendata.comune.bari.it/dataset/dce6ce30-5822-4afa-a44f-74b8de7304b0/resource/0b53ada1-b60c-4bdb-8415-adfd68ded388/download/centraline_semaforiche_202508.json",
         "https://opendata.comune.bari.it/dataset/dce6ce30-5822-4afa-a44f-74b8de7304b0/resource/1f7f0366-0d19-473c-b890-963e40d18fe5/download/centraline_semaforiche_202602.json",
@@ -528,21 +638,23 @@
     "air_stations": {
       "status": "ok",
       "files": 1,
-      "downloaded_at": "2026-09-29T17:13:00.588601+00:00",
+      "downloaded_at": "2026-10-01T09:52:33.358030+00:00",
       "urls": [
-        "http://old.arpa.puglia.it/ARPA_ARIA/centraline.jsp"
+        "https://dati.arpa.puglia.it/ARPA_ARIA/centraline.jsp"
       ]
     },
     "air_daily_api": {
-      "status": "failed",
-      "files": 0,
-      "downloaded_at": null,
-      "urls": []
+      "status": "ok",
+      "files": 1,
+      "downloaded_at": "2026-10-01T09:52:39.121570+00:00",
+      "urls": [
+        "https://cloud.arpa.puglia.it/QualitaAria?format=GeoJSON"
+      ]
     },
     "population": {
       "status": "ok",
       "files": 4,
-      "downloaded_at": "2026-09-29T17:13:32.955610+00:00",
+      "downloaded_at": "2026-10-01T09:54:12.197983+00:00",
       "urls": [
         "https://opendata.comune.bari.it/dataset/5349df40-0d9e-4ca2-8104-d6e2f95d6267/resource/92657a6b-34a5-4813-b62c-75ab8de4a77c/download/under67.csv",
         "https://opendata.comune.bari.it/dataset/5349df40-0d9e-4ca2-8104-d6e2f95d6267/resource/b3d0f99c-2c8f-4d6b-8b52-f3b693bf1f21/download/under14.csv",
@@ -553,7 +665,7 @@
     "sit": {
       "status": "ok",
       "files": 4,
-      "downloaded_at": "2026-09-29T17:13:52.145615+00:00",
+      "downloaded_at": "2026-10-01T09:52:56.326697+00:00",
       "urls": [
         "https://sit.egov.ba.it/vector/api/shp/qdjango/384/Confine_Comunale_Bari20200227151955299/",
         "https://sit.egov.ba.it/vector/api/shp/qdjango/384/municipi20200616115312092/",
@@ -564,7 +676,7 @@
     "circoscrizioni_2013": {
       "status": "ok",
       "files": 1,
-      "downloaded_at": "2026-09-29T17:13:52.638615+00:00",
+      "downloaded_at": "2026-10-01T09:54:13.053168+00:00",
       "urls": [
         "https://opendata.comune.bari.it/dataset/82532fb7-2d49-452f-aefe-1552c0c4d2c7/resource/77b9fa9b-71a7-4c11-8d62-49d29bfc2990/download/20130222t140509circoscrizioni.zip"
       ]
@@ -572,7 +684,7 @@
     "land_use_2011": {
       "status": "ok",
       "files": 2,
-      "downloaded_at": "2026-09-29T17:16:23.381664+00:00",
+      "downloaded_at": "2026-10-01T09:57:02.666220+00:00",
       "urls": [
         "https://dati.puglia.it/ckan/dataset/676e14b8-984b-41f9-8fed-057b23428f84/resource/3c37fa8b-5259-4503-a7ff-928dea7c268e/download/udssuperficiartificiali.zip",
         "https://dati.puglia.it/ckan/dataset/676e14b8-984b-41f9-8fed-057b23428f84/resource/aff8415f-cbce-4f25-b1f1-9bad9f3a6798/download/legendausodelsuolo.ods"
@@ -581,7 +693,7 @@
     "eprtr": {
       "status": "ok",
       "files": 1,
-      "downloaded_at": "2026-09-29T17:17:21.150686+00:00",
+      "downloaded_at": "2026-10-01T09:53:43.348300+00:00",
       "urls": [
         "https://sdi.eea.europa.eu/datashare/public.php/dav/files/sptXqwkQr5g7Bp5/eea_t_ied-eprtr_p_2007-2024_v16_r00/User%20friendly%20.csv%20files.zip"
       ]
@@ -589,7 +701,7 @@
     "sentinel2_ndvi": {
       "status": "ok",
       "files": 1,
-      "downloaded_at": "2026-09-29T20:31:10.792669+00:00",
+      "downloaded_at": "2026-10-01T10:04:44.570885+00:00",
       "urls": [
         "https://planetarycomputer.microsoft.com/api/stac/v1/search"
       ]

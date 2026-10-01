@@ -10,6 +10,7 @@ import { cx, ICONS } from '../lib/ui'
 
 const VIEW_OPTIONS: { value: View; label: string }[] = [
   { value: 'zone', label: 'Quartieri' },
+  { value: 50, label: 'Celle 50 m' },
   { value: 250, label: 'Celle 250 m' },
   { value: 500, label: 'Celle 500 m' },
 ]

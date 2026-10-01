@@ -32,10 +32,10 @@ sources:
     type: ckan
     dataset: centraline-semaforiche-posizionamento-e-sensoristica-a-bordo
 
-  air_stations:  # D5
+  air_stations:  # D5; same 68-station GeoJSON as old.arpa.puglia.it, but HTTPS and ~5x faster
     type: url
     files:
-      - url: http://old.arpa.puglia.it/ARPA_ARIA/centraline.jsp
+      - url: https://dati.arpa.puglia.it/ARPA_ARIA/centraline.jsp
         filename: stations.geojson
 
   air_daily_api:  # D4, previous day only; fallback source for the annual means
@@ -74,6 +74,8 @@ sources:
     name_pattern: "Superfici Artificiali|Legenda"
 
   eprtr:  # D10, EEA Industrial Reporting v16 (2007-2024), user-friendly CSV bundle (~148 MB)
+    # The share token in the URL may rotate; if it 404s, get the current link from
+    # https://sdi.eea.europa.eu/data/657ac3cb-affa-4295-a4a9-27b4f539adab
     type: url
     files:
       - url: https://sdi.eea.europa.eu/datashare/public.php/dav/files/sptXqwkQr5g7Bp5/eea_t_ied-eprtr_p_2007-2024_v16_r00/User%20friendly%20.csv%20files.zip
@@ -94,8 +96,8 @@ sources:
 # Model parameters
 # ---------------------------------------------------------------------------
 grid:
-  cell_sizes_m: [250, 500]  # Q7
-  default_cell_size_m: 250
+  cell_sizes_m: [50, 250, 500]  # Q7
+  default_cell_size_m: 50
 
 urban_mask:  # Q6
   # 50 residents per 250 m cell, applied as a density so 500 m and clipped edge cells use the same rule

@@ -3,7 +3,7 @@ import type { FeatureCollection, Geometry } from 'geojson'
 
 export type IndicatorKey = 'pollution' | 'green_deficit' | 'traffic' | 'population' | 'industry'
 export type Level = 'zone' | 'cell'
-export type GridSize = 250 | 500
+export type GridSize = 50 | 250 | 500
 export type ClassKey = 'bassa' | 'media' | 'medio_alta' | 'alta'
 export type LayerKey = 'green' | 'traffic' | 'air' | 'industry'
 
