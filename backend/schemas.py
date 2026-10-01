@@ -139,13 +139,18 @@ class SimulationState(BaseModel):
 
 
 class Simulation(Weights):
-    """Tree simulator (FR-28, Q37). Only the green-deficit indicator changes."""
+    """Tree simulator (FR-28, Q37, Q37b). Only the green-deficit indicator changes."""
 
     level: LevelName
     id: str
     grid: int | None
     trees: int
-    added_veg_m2: float  # trees × crown area
+    years: int | None = None  # Q37b: years since planting (None = mature crowns, the Q37 view)
+    growth_share: float | None = None  # crown fraction at `years` (linear growth model)
+    maturity_years: int | None = None  # years to full crown (trees.growth_years_maturity)
+    years_to_target: int | None = None  # cells: first year the cell reaches the target share
+    years_to_class_change: int | None = None  # cells: first year the class drops
+    added_veg_m2: float  # trees × crown area × growth_share
     crown_area_m2: float
     target_green_share: float
     trees_estimate: int | None  # the model's estimate (trees_new)

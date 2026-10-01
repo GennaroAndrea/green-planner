@@ -51,8 +51,11 @@ function SimulatorBody({ d }: { d: Detail }) {
   }, [estimate, target])
   const [trees, setTrees] = useState(estimate)
   const debounced = useDebounced(trees, 120)
-  const sim = useFetch<Simulation>(api.simulate(d.level, d.id, debounced, wParam))
+  const [years, setYears] = useState<number | null>(null)
+  const debouncedYears = useDebounced(years, 120)
+  const sim = useFetch<Simulation>(api.simulate(d.level, d.id, debounced, wParam, debouncedYears))
   const s = sim.data
+  const maxYears = (s?.maturity_years ?? 15) + 10
 
   const marker = (n: number) => `calc(10px + (100% - 20px) * ${Math.min(1, n / max)})`
 
@@ -109,6 +112,54 @@ function SimulatorBody({ d }: { d: Detail }) {
             ? `Con ${fmt(target)} alberi (${fmt(d.trees.target_green_share * 100)}% di vegetazione in ${d.level === 'zone' ? 'ogni cella abitata' : 'questa cella'}) si chiude tutto il deficit. La stima del modello (${fmt(estimate)}) considera piantabile solo il 25% del deficit.`
             : 'Questa zona ha già almeno il 15% di verde pubblico: nessun deficit da colmare.'}
         </Caption>
+      </div>
+
+      <div>
+        <div className="flex items-center gap-3 pb-4">
+          <label htmlFor="sim-years" className="text-[13px] text-ink-2">
+            Anni dalla piantumazione
+          </label>
+          <div className="relative flex-1">
+            <input
+              id="sim-years"
+              type="range"
+              className="range block w-full"
+              min={0}
+              max={maxYears}
+              step={1}
+              value={years ?? maxYears}
+              onChange={(e) => setYears(Number(e.target.value))}
+              style={{ '--fill': '#888780' } as React.CSSProperties}
+            />
+            <span
+              className="absolute top-[36px] -translate-x-1/2 font-mono text-[10px] whitespace-nowrap text-ink-2"
+              style={{ left: `calc(10px + (100% - 20px) * ${Math.min(1, (s?.maturity_years ?? 15) / maxYears)})` }}
+            >
+              ▲ maturità
+            </span>
+          </div>
+          <span className="min-w-14 text-right font-mono text-sm">
+            {years == null ? 'maturi' : `${fmt(years)} ${years === 1 ? 'anno' : 'anni'}`}
+          </span>
+        </div>
+        <Caption className="mt-1">
+          {s && s.growth_share != null && s.growth_share < 1
+            ? `Chioma al ${pct(s.growth_share)} della maturità: gli alberi crescono linearmente fino all'anno ${s.maturity_years} (stima del modello).`
+            : `A maturità (anno ${s?.maturity_years ?? 15}) ogni albero contribuisce con la chioma piena.`}
+        </Caption>
+        {s && d.level === 'cell' && trees > 0 && (
+          <Caption className="mt-2">
+            {s.years_to_target != null
+              ? s.years_to_target === 0
+                ? 'La cella è già al di sopra dell\'obiettivo di vegetazione.'
+                : `Con ${fmt(trees)} alberi la cella raggiunge il ${fmt(s.target_green_share * 100)}% di vegetazione nell'anno ${s.years_to_target}.`
+              : `Con ${fmt(trees)} alberi il ${fmt(s.target_green_share * 100)}% di vegetazione non è raggiungibile in questa cella (servono ~${fmt(s.trees_for_target)} alberi).`}{' '}
+            {s.years_to_class_change != null
+              ? `La priorità scende di classe nell'anno ${s.years_to_class_change}.`
+              : 'La classe di priorità resta invariata anche a maturità.'}
+          </Caption>
+        )}
+        {d.level === 'zone' && <Caption className="mt-2">Il calcolo per anno è disponibile per le singole celle.</Caption>}
       </div>
 
       {s ? (

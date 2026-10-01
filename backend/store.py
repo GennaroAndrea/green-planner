@@ -246,9 +246,14 @@ class Store:
     # ------------------------------------------------------------------ simulator
 
     def simulate(
-        self, level: Level, item_id: Any, n_trees: int, weights: Mapping[str, float] | None
+        self,
+        level: Level,
+        item_id: Any,
+        n_trees: int,
+        weights: Mapping[str, float] | None,
+        years: int | None = None,
     ) -> dict[str, Any]:
-        """What-if: plant `n_trees` in one analysed cell or zone (Q37).
+        """What-if: plant `n_trees` in one analysed cell or zone (Q37, Q37b).
 
         Each tree adds its crown area to the vegetated area (Q49). Only the green-deficit score
         changes: it is recomputed with the build's normalisation bounds, then the IPF with the
@@ -256,13 +261,22 @@ class Store:
         city unchanged). For a zone, the trees are spread over its residential analysed cells
         (Q50) in proportion to their green deficit, and the zone score is re-aggregated
         (population-weighted mean).
+
+        With `years` (Q37b), the added vegetation is scaled by the linear growth model: a crown
+        reaches its full size over `trees.growth_years_maturity` years, so the factor at
+        `years` is min(1, years / maturity). For cells the response also carries
+        `years_to_target` (first year the cell reaches the target green share) and
+        `years_to_class_change` (first year the priority class drops below the current one).
+        Without `years`, growth is 1 (mature crowns): the Q37 behaviour is unchanged.
         """
         sc = self.scenario(level, weights)
         row = level.frame.loc[item_id]
         if not bool(row["analysed"]):
             raise ValueError(f"{item_id} is not analysed")
         crown = float(self.metadata["trees"]["crown_area_m2"])
-        added_m2 = n_trees * crown
+        maturity = float(self.metadata["trees"].get("growth_years_maturity", 15))
+        growth = 1.0 if years is None else min(1.0, years / maturity)
+        added_m2 = n_trees * crown * growth
         if level.name == "zones":
             size = self.metadata["zones"]["aggregated_from_cell_size_m"]
             cells_level = self.levels[f"cells_{size}"]
@@ -304,13 +318,38 @@ class Store:
             }
 
         deficit = float(np.nan_to_num(row["green_deficit_m2"]))
+        target_share = float(self.metadata["trees"]["target_green_share"])
+
+        years_to_target: int | None = None
+        years_to_class_change: int | None = None
+        if level.name != "zones" and n_trees > 0:
+            needed_m2 = max(0.0, target_share * area - veg_before)
+            if needed_m2 == 0:
+                years_to_target = 0
+            elif needed_m2 <= n_trees * crown:
+                years_to_target = math.ceil(needed_m2 / (n_trees * crown / maturity))
+            else:
+                years_to_target = None
+            class_before = int(np.searchsorted(sc.class_edges, ipf_before, side="right") + 1)
+            for t in range(1, int(maturity) + 1):
+                veg_t = (veg_before + n_trees * crown * min(1.0, t / maturity)) / area
+                ipf_t = ipf_before + w * (float(green_deficit_score(veg_t, bounds)) - score_before)
+                if int(np.searchsorted(sc.class_edges, ipf_t, side="right") + 1) < class_before:
+                    years_to_class_change = t
+                    break
+
         return {
             "weights": sc.weights,
             "is_default": sc.is_default,
             "trees": n_trees,
+            "years": years,
+            "growth_share": growth,
+            "maturity_years": int(maturity),
+            "years_to_target": years_to_target,
+            "years_to_class_change": years_to_class_change,
             "added_veg_m2": added_m2,
             "crown_area_m2": crown,
-            "target_green_share": self.metadata["trees"]["target_green_share"],
+            "target_green_share": target_share,
             "trees_estimate": to_json_value(row["trees_new"]),
             "trees_for_target": math.ceil(deficit / crown),
             "before": state(veg_before, score_before, ipf_before),

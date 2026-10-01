@@ -187,6 +187,9 @@ trees:  # Q12; since Q49 the green share is the satellite vegetation share
   target_green_share: 0.15
   plantable_fraction: 0.25
   crown_area_m2: 30
+  # Growth model (Q37b): a planted crown reaches its full size linearly over this many years.
+  # The simulator's "years" slider scales the added vegetation by years / growth_years_maturity.
+  growth_years_maturity: 15
 
 sensitivity:  # Q17
   runs: 1000

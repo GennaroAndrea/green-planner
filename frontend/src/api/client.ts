@@ -46,8 +46,8 @@ export const api = {
   cells: (grid: GridSize, w: string | null) => `/api/cells${query({ grid, weights: w })}`,
   detail: (level: Level, id: string, w: string | null) =>
     `/api/${level === 'zone' ? 'zones' : 'cells'}/${encodeURIComponent(id)}${query({ weights: w })}`,
-  simulate: (level: Level, id: string, trees: number, w: string | null) =>
-    `/api/${level === 'zone' ? 'zones' : 'cells'}/${encodeURIComponent(id)}/simulate${query({ trees, weights: w })}`,
+  simulate: (level: Level, id: string, trees: number, w: string | null, years?: number | null) =>
+    `/api/${level === 'zone' ? 'zones' : 'cells'}/${encodeURIComponent(id)}/simulate${query({ trees, weights: w, years: years ?? null })}`,
   ranking: (level: Level, grid: GridSize, limit: number | null, w: string | null) =>
     `/api/ranking${query({ level, grid: level === 'cell' ? grid : null, limit, weights: w })}`,
   sensitivity: (level: Level, grid: GridSize, w: string | null) =>

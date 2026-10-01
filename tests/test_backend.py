@@ -537,3 +537,31 @@ def test_real_artefacts_smoke():
         zone = top["items"][0]["zone_id"]
         assert _no_nan(c.get(f"/api/zones/{zone}?weights={CUSTOM}").text)["analysed"]
         assert c.get("/api/sensitivity?level=cell").json()["applicable"]
+
+
+def test_simulating_with_years_uses_the_growth_model(client):
+    url = "/api/cells/250-0-0"
+    mature = client.get(f"{url}/simulate?trees=100").json()
+    maturity = mature["maturity_years"]
+    assert mature["years"] is None and mature["growth_share"] == 1
+    zero = client.get(f"{url}/simulate?trees=100&years=0").json()
+    assert zero["growth_share"] == 0
+    assert zero["after"]["veg_m2"] == pytest.approx(zero["before"]["veg_m2"])
+    assert zero["after"]["ipf"] == pytest.approx(zero["before"]["ipf"])
+    late = client.get(f"{url}/simulate?trees=100&years={maturity + 10}").json()
+    assert late["after"]["veg_m2"] == pytest.approx(mature["after"]["veg_m2"])
+    mid = client.get(f"{url}/simulate?trees=100&years=7").json()
+    assert mid["growth_share"] == pytest.approx(7 / maturity)
+    assert mid["added_veg_m2"] == pytest.approx(100 * mid["crown_area_m2"] * 7 / maturity)
+    gap = mature["after"]["veg_m2"] - zero["before"]["veg_m2"]
+    assert mid["after"]["veg_m2"] == pytest.approx(zero["before"]["veg_m2"] + gap * 7 / maturity)
+
+
+def test_simulating_with_years_reports_time_horizons(client):
+    sim = client.get("/api/cells/250-0-0/simulate?trees=1000").json()
+    target = sim["years_to_target"]
+    change = sim["years_to_class_change"]
+    assert target is None or target <= sim["maturity_years"]
+    assert change is None or change <= sim["maturity_years"]
+    zone = client.get("/api/zones/1/simulate?trees=200").json()
+    assert zone["years_to_target"] is None and zone["years_to_class_change"] is None

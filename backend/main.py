@@ -57,6 +57,10 @@ WeightsParam = Annotated[
 ]
 GridParam = Annotated[int | None, Query(description="Cell size in metres (cells only)")]
 TreesParam = Annotated[int, Query(ge=0, le=1_000_000, description="New trees to plant")]
+YearsParam = Annotated[
+    int | None,
+    Query(ge=0, le=200, description="Years since planting; crowns grow linearly until maturity"),
+]
 
 
 def create_app(
@@ -180,19 +184,27 @@ def _add_routes(app: FastAPI) -> None:
 
     @app.get("/api/cells/{cell_id}/simulate", response_model=schemas.Simulation)
     def cell_simulate(
-        cell_id: str, store: StoreDep, trees: TreesParam, weights: WeightsParam = None
+        cell_id: str,
+        store: StoreDep,
+        trees: TreesParam,
+        weights: WeightsParam = None,
+        years: YearsParam = None,
     ) -> dict:
-        """Tree simulator for one cell (FR-28, Q37)."""
+        """Tree simulator for one cell (FR-28, Q37, Q37b)."""
         lvl, _ = _cell(store, cell_id, weights)
-        return _simulate(store, lvl, cell_id, trees, weights)
+        return _simulate(store, lvl, cell_id, trees, weights, years)
 
     @app.get("/api/zones/{zone_id}/simulate", response_model=schemas.Simulation)
     def zone_simulate(
-        zone_id: int, store: StoreDep, trees: TreesParam, weights: WeightsParam = None
+        zone_id: int,
+        store: StoreDep,
+        trees: TreesParam,
+        weights: WeightsParam = None,
+        years: YearsParam = None,
     ) -> dict:
-        """Tree simulator for one quartiere (FR-28, Q37)."""
+        """Tree simulator for one quartiere (FR-28, Q37, Q37b)."""
         lvl, _ = _zone(store, zone_id, weights)
-        return _simulate(store, lvl, zone_id, trees, weights)
+        return _simulate(store, lvl, zone_id, trees, weights, years)
 
     @app.get("/api/layers/{name}", response_class=Response)
     def layer(name: str, store: StoreDep) -> Response:
@@ -287,10 +299,12 @@ def _add_routes(app: FastAPI) -> None:
         }
 
 
-def _simulate(store: Store, lvl: Level, item_id: Any, trees: int, weights: str | None) -> dict:
+def _simulate(
+    store: Store, lvl: Level, item_id: Any, trees: int, weights: str | None, years: int | None
+) -> dict:
     parsed = parse_weights(weights, store.active, store.inactive)  # already validated
     try:
-        result = store.simulate(lvl, item_id, trees, parsed)
+        result = store.simulate(lvl, item_id, trees, parsed, years)
     except ValueError as e:
         raise HTTPException(400, str(e)) from None
     for state in (result["before"], result["after"]):

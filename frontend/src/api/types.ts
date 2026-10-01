@@ -220,6 +220,11 @@ export interface Simulation extends Weights {
   id: string
   grid: GridSize | null
   trees: number
+  years: number | null
+  growth_share: number | null
+  maturity_years: number | null
+  years_to_target: number | null
+  years_to_class_change: number | null
   added_veg_m2: number
   crown_area_m2: number
   target_green_share: number

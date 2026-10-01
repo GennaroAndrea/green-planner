@@ -366,7 +366,7 @@ class ProjectTools:
             raise ToolError("il numero di alberi deve essere tra 0 e 100.000")
         zid = self.zone_id(name)
         lvl, _ = api._zone(self.store, zid, None)
-        s = api._simulate(self.store, lvl, zid, trees, None)
+        s = api._simulate(self.store, lvl, zid, trees, None, None)
         title = api._zone_names(self.store).get(zid)
         b, a = s["before"], s["after"]
         return (
